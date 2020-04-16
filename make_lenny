@@ -1,0 +1,6 @@
+#!/bin/bash
+
+#make clean
+schroot --preserve-environment --run-session --chroot=lenny-$USER make
+mkdir -p $BENCHMARKS_ROOT/graphite-lenny
+./package.sh - | tar xv --strip-components=2 -C ../benchmarks/graphite-lenny

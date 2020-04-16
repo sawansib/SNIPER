@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#make clean
+schroot --preserve-environment --run-session --chroot=sl-5.5-$USER make
+mkdir -p $BENCHMARKS_ROOT/graphite-sl55
+./package.sh - | tar xv --strip-components=2 -C ../benchmarks/graphite-sl55
+

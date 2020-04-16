@@ -1,0 +1,750 @@
+diff --git a/common/system/sync_client.cc b/common/system/sync_client.cc
+index f1ef34b..11d9df5 100644
+--- a/common/system/sync_client.cc
++++ b/common/system/sync_client.cc
+@@ -28,21 +28,29 @@ void SyncClient::mutexInit(carbon_mutex_t *mux)
+ 
+    int msg_type = MCP_MESSAGE_MUTEX_INIT;
+ 
+-   m_send_buff << msg_type;
++   m_send_buff << msg_type << mux;
+ 
+    m_network->netSend(Config::getSingleton()->getMCPCoreNum(), MCP_REQUEST_TYPE, m_send_buff.getBuffer(), m_send_buff.size());
+ 
+    NetPacket recv_pkt;
+    recv_pkt = m_network->netRecv(Config::getSingleton()->getMCPCoreNum(), MCP_RESPONSE_TYPE);
+-   assert(recv_pkt.length == sizeof(carbon_mutex_t));
+-
+-   *mux = *((carbon_mutex_t*)recv_pkt.data);
++   assert(recv_pkt.length == sizeof(carbon_mutex_t *));
+ 
+    delete [](Byte*) recv_pkt.data;
+ }
+ 
+ void SyncClient::mutexLock(carbon_mutex_t *mux)
+ {
++	__mutexLock(mux, false);
++}
++
++bool SyncClient::mutexTrylock(carbon_mutex_t *mux)
++{
++	return __mutexLock(mux, true);
++}
++
++bool SyncClient::__mutexLock(carbon_mutex_t *mux, bool tryLock)
++{
+    // Save/Restore Floating Point state
+    FloatingPointHandler floating_point_handler;
+ 
+@@ -56,7 +64,7 @@ void SyncClient::mutexLock(carbon_mutex_t *mux)
+    UInt64 start_time = convertCycleCount(m_core->getPerformanceModel()->getCycleCount(), \
+          m_core->getPerformanceModel()->getFrequency(), 1.0);
+ 
+-   m_send_buff << msg_type << *mux << start_time;
++   m_send_buff << msg_type << (int)tryLock << mux << start_time;
+ 
+    LOG_PRINT("mutexLock(): mux(%u), start_time(%llu)", *mux, start_time);
+    m_network->netSend(Config::getSingleton()->getMCPCoreNum(), MCP_REQUEST_TYPE, m_send_buff.getBuffer(), m_send_buff.size());
+@@ -75,7 +83,6 @@ void SyncClient::mutexLock(carbon_mutex_t *mux)
+    UInt64 time;
+    m_recv_buff << make_pair(recv_pkt.data, recv_pkt.length);
+    m_recv_buff >> dummy;
+-   assert(dummy == MUTEX_LOCK_RESPONSE);
+ 
+    m_recv_buff >> time;
+ 
+@@ -89,6 +96,13 @@ void SyncClient::mutexLock(carbon_mutex_t *mux)
+    }
+ 
+    delete [](Byte*) recv_pkt.data;
++
++   if (dummy == MUTEX_LOCK_RESPONSE)
++       return false;
++   else if (dummy == MUTEX_TRYLOCK_RESPONSE)
++       return true;
++   else
++       assert(false);
+ }
+ 
+ void SyncClient::mutexUnlock(carbon_mutex_t *mux)
+@@ -106,7 +120,7 @@ void SyncClient::mutexUnlock(carbon_mutex_t *mux)
+    UInt64 start_time = convertCycleCount(m_core->getPerformanceModel()->getCycleCount(), \
+          m_core->getPerformanceModel()->getFrequency(), 1.0);
+ 
+-   m_send_buff << msg_type << *mux << start_time;
++   m_send_buff << msg_type << mux << start_time;
+ 
+    LOG_PRINT("mutexUnlock(): mux(%u), start_time(%llu)", *mux, start_time);
+    m_network->netSend(Config::getSingleton()->getMCPCoreNum(), MCP_REQUEST_TYPE, m_send_buff.getBuffer(), m_send_buff.size());
+@@ -138,15 +152,13 @@ void SyncClient::condInit(carbon_cond_t *cond)
+    UInt64 start_time = convertCycleCount(m_core->getPerformanceModel()->getCycleCount(), \
+          m_core->getPerformanceModel()->getFrequency(), 1.0);
+ 
+-   m_send_buff << msg_type << *cond << start_time;
++   m_send_buff << msg_type << cond << start_time;
+ 
+    m_network->netSend(Config::getSingleton()->getMCPCoreNum(), MCP_REQUEST_TYPE, m_send_buff.getBuffer(), m_send_buff.size());
+ 
+    NetPacket recv_pkt;
+    recv_pkt = m_network->netRecv(Config::getSingleton()->getMCPCoreNum(), MCP_RESPONSE_TYPE);
+-   assert(recv_pkt.length == sizeof(carbon_cond_t));
+-
+-   *cond = *((carbon_cond_t*)recv_pkt.data);
++   assert(recv_pkt.length == sizeof(carbon_cond_t *));
+ 
+    delete [](Byte*) recv_pkt.data;
+ }
+@@ -166,7 +178,7 @@ void SyncClient::condWait(carbon_cond_t *cond, carbon_mutex_t *mux)
+    UInt64 start_time = convertCycleCount(m_core->getPerformanceModel()->getCycleCount(), \
+          m_core->getPerformanceModel()->getFrequency(), 1.0);
+ 
+-   m_send_buff << msg_type << *cond << *mux << start_time;
++   m_send_buff << msg_type << cond << mux << start_time;
+ 
+    LOG_PRINT("condWait(): cond(%u), mux(%u), start_time(%llu)", *cond, *mux, start_time);
+    m_network->netSend(Config::getSingleton()->getMCPCoreNum(), MCP_REQUEST_TYPE, m_send_buff.getBuffer(), m_send_buff.size());
+@@ -216,7 +228,7 @@ void SyncClient::condSignal(carbon_cond_t *cond)
+    UInt64 start_time = convertCycleCount(m_core->getPerformanceModel()->getCycleCount(), \
+          m_core->getPerformanceModel()->getFrequency(), 1.0);
+ 
+-   m_send_buff << msg_type << *cond << start_time;
++   m_send_buff << msg_type << cond << start_time;
+ 
+    LOG_PRINT("condSignal(): cond(%u), start_time(%llu)", *cond, start_time);
+    m_network->netSend(Config::getSingleton()->getMCPCoreNum(), MCP_REQUEST_TYPE, m_send_buff.getBuffer(), m_send_buff.size());
+@@ -248,7 +260,7 @@ void SyncClient::condBroadcast(carbon_cond_t *cond)
+    UInt64 start_time = convertCycleCount(m_core->getPerformanceModel()->getCycleCount(), \
+          m_core->getPerformanceModel()->getFrequency(), 1.0);
+ 
+-   m_send_buff << msg_type << *cond << start_time;
++   m_send_buff << msg_type << cond << start_time;
+ 
+    LOG_PRINT("condBroadcast(): cond(%u), start_time(%llu)", *cond, start_time);
+    m_network->netSend(Config::getSingleton()->getMCPCoreNum(), MCP_REQUEST_TYPE, m_send_buff.getBuffer(), m_send_buff.size());
+diff --git a/common/system/sync_client.h b/common/system/sync_client.h
+index 90399df..a8e02c2 100644
+--- a/common/system/sync_client.h
++++ b/common/system/sync_client.h
+@@ -15,6 +15,7 @@ class SyncClient
+ 
+       void mutexInit(carbon_mutex_t *mux);
+       void mutexLock(carbon_mutex_t *mux);
++      bool mutexTrylock(carbon_mutex_t *mux);
+       void mutexUnlock(carbon_mutex_t *mux);
+ 
+       void condInit(carbon_cond_t *cond);
+@@ -36,6 +37,7 @@ class SyncClient
+       */
+ 
+       static const unsigned int MUTEX_LOCK_RESPONSE   = 0xDEADBEEF;
++      static const unsigned int MUTEX_TRYLOCK_RESPONSE = 0x0F0FBEEF;
+       static const unsigned int MUTEX_UNLOCK_RESPONSE = 0xBABECAFE;
+       static const unsigned int COND_WAIT_RESPONSE    = MUTEX_LOCK_RESPONSE;
+       static const unsigned int COND_SIGNAL_RESPONSE  = 0xBEEFCAFE;
+@@ -48,6 +50,8 @@ class SyncClient
+       UnstructuredBuffer m_send_buff;
+       UnstructuredBuffer m_recv_buff;
+ 
++      bool __mutexLock(carbon_mutex_t *mux, bool tryLock);
++
+ };
+ 
+ #endif
+diff --git a/common/system/sync_server.cc b/common/system/sync_server.cc
+index 27c0531..64cacb6 100644
+--- a/common/system/sync_server.cc
++++ b/common/system/sync_server.cc
+@@ -37,6 +37,16 @@ bool SimMutex::lock(core_id_t core_id)
+    }
+ }
+ 
++bool SimMutex::locked(core_id_t core_id)
++{
++   if (m_owner == NO_OWNER)
++      return false;
++   else if (m_owner == core_id)
++      return false;
++   else
++      return true;
++}
++
+ core_id_t SimMutex::unlock(core_id_t core_id)
+ {
+    assert(m_owner == core_id);
+@@ -61,7 +71,7 @@ SimCond::~SimCond()
+    assert(m_waiting.empty());
+ }
+ 
+-core_id_t SimCond::wait(core_id_t core_id, UInt64 time, StableIterator<SimMutex> & simMux)
++core_id_t SimCond::wait(core_id_t core_id, UInt64 time, SimMutex * simMux)
+ {
+    Sim()->getThreadManager()->stallThread(core_id);
+ 
+@@ -164,27 +174,56 @@ SyncServer::SyncServer(Network &network, UnstructuredBuffer &recv_buffer)
+ SyncServer::~SyncServer()
+ { }
+ 
++SimMutex * SyncServer::getMutex(carbon_mutex_t *mux, bool canCreate)
++{
++   /* if mux is the address of a pthread mutex (with default initialization, not through pthread_mutex_init),
++      look it up in m_mutexes or create a new one if it's the first time we see it */
++   if (m_mutexes.count(mux))
++      return &m_mutexes[mux];
++   else if (canCreate)
++   {
++      m_mutexes[mux] = SimMutex();
++      return &m_mutexes[mux];
++   }
++   else
++   {
++      LOG_ASSERT_ERROR(false, "Invalid mutex id passed");
++      return NULL;
++   }
++}
++
+ void SyncServer::mutexInit(core_id_t core_id)
+ {
+-   m_mutexes.push_back(SimMutex());
+-   UInt32 mux = (UInt32)m_mutexes.size()-1;
++   carbon_mutex_t *mux;
++   m_recv_buffer >> mux;
++
++   getMutex(mux);
+ 
+    m_network.netSend(core_id, MCP_RESPONSE_TYPE, (char*)&mux, sizeof(mux));
+ }
+ 
+ void SyncServer::mutexLock(core_id_t core_id)
+ {
+-   carbon_mutex_t mux;
++   int tryLock;
++   m_recv_buffer >> tryLock;
++
++   carbon_mutex_t *mux;
+    m_recv_buffer >> mux;
+ 
+    UInt64 time;
+    m_recv_buffer >> time;
+ 
+-   assert((size_t)mux < m_mutexes.size());
+-
+-   SimMutex *psimmux = &m_mutexes[mux];
++   SimMutex *psimmux = getMutex(mux);
+ 
+-   if (psimmux->lock(core_id))
++   if (tryLock && psimmux->locked(core_id))
++   {
++      // notify the owner of failure
++      Reply r;
++      r.dummy = SyncClient::MUTEX_TRYLOCK_RESPONSE;
++      r.time = time;
++      m_network.netSend(core_id, MCP_RESPONSE_TYPE, (char*)&r, sizeof(r));
++   }
++   else if (psimmux->lock(core_id))
+    {
+       // notify the owner
+       Reply r;
+@@ -200,15 +239,13 @@ void SyncServer::mutexLock(core_id_t core_id)
+ 
+ void SyncServer::mutexUnlock(core_id_t core_id)
+ {
+-   carbon_mutex_t mux;
++   carbon_mutex_t *mux;
+    m_recv_buffer >> mux;
+ 
+    UInt64 time;
+    m_recv_buffer >> time;
+ 
+-   assert((size_t)mux < m_mutexes.size());
+-
+-   SimMutex *psimmux = &m_mutexes[mux];
++   SimMutex *psimmux = getMutex(mux, false);
+ 
+    core_id_t new_owner = psimmux->unlock(core_id);
+ 
+@@ -230,31 +267,48 @@ void SyncServer::mutexUnlock(core_id_t core_id)
+ }
+ 
+ // -- Condition Variable Stuffs -- //
++SimCond * SyncServer::getCond(carbon_cond_t *cond, bool canCreate)
++{
++   /* if cond is the address of a pthread cond (with default initialization, not through pthread_cond_init),
++      look it up in m_conds or create a new one if it's the first time we see it */
++   if (m_conds.count(cond))
++      return &m_conds[cond];
++   else if (canCreate)
++   {
++      m_conds[cond] = SimCond();
++      return &m_conds[cond];
++   }
++   else
++   {
++      LOG_ASSERT_ERROR(false, "Invalid cond id passed");
++      return NULL;
++   }
++}
++
+ void SyncServer::condInit(core_id_t core_id)
+ {
+-   m_conds.push_back(SimCond());
+-   UInt32 cond = (UInt32)m_conds.size()-1;
++   carbon_cond_t *cond;
++   m_recv_buffer >> cond;
++
++   getCond(cond);
+ 
+    m_network.netSend(core_id, MCP_RESPONSE_TYPE, (char*)&cond, sizeof(cond));
+ }
+ 
+ void SyncServer::condWait(core_id_t core_id)
+ {
+-   carbon_cond_t cond;
+-   carbon_mutex_t mux;
++   carbon_cond_t *cond;
++   carbon_mutex_t *mux;
+    m_recv_buffer >> cond;
+    m_recv_buffer >> mux;
+ 
+    UInt64 time;
+    m_recv_buffer >> time;
+ 
+-   assert((size_t)mux < m_mutexes.size());
+-   assert((size_t)cond < m_conds.size());
+-
+-   SimCond *psimcond = &m_conds[cond];
++   SimMutex *psimmux = getMutex(mux);
++   SimCond *psimcond = getCond(cond);
+ 
+-   StableIterator<SimMutex> it(m_mutexes, mux);
+-   core_id_t new_mutex_owner = psimcond->wait(core_id, time, it);
++   core_id_t new_mutex_owner = psimcond->wait(core_id, time, psimmux);
+ 
+    if (new_mutex_owner != SimMutex::NO_OWNER)
+    {
+@@ -270,15 +324,13 @@ void SyncServer::condWait(core_id_t core_id)
+ 
+ void SyncServer::condSignal(core_id_t core_id)
+ {
+-   carbon_cond_t cond;
++   carbon_cond_t *cond;
+    m_recv_buffer >> cond;
+ 
+    UInt64 time;
+    m_recv_buffer >> time;
+ 
+-   assert((size_t)cond < m_conds.size());
+-
+-   SimCond *psimcond = &m_conds[cond];
++   SimCond *psimcond = getCond(cond);
+ 
+    core_id_t woken = psimcond->signal(core_id, time);
+ 
+@@ -303,15 +355,13 @@ void SyncServer::condSignal(core_id_t core_id)
+ 
+ void SyncServer::condBroadcast(core_id_t core_id)
+ {
+-   carbon_cond_t cond;
++   carbon_cond_t *cond;
+    m_recv_buffer >> cond;
+ 
+    UInt64 time;
+    m_recv_buffer >> time;
+ 
+-   assert((size_t)cond < m_conds.size());
+-
+-   SimCond *psimcond = &m_conds[cond];
++   SimCond *psimcond = getCond(cond);
+ 
+    SimCond::WakeupList woken_list;
+    psimcond->broadcast(core_id, time, woken_list);
+diff --git a/common/system/sync_server.h b/common/system/sync_server.h
+index 4f92cee..d8ec809 100644
+--- a/common/system/sync_server.h
++++ b/common/system/sync_server.h
+@@ -23,6 +23,9 @@ class SimMutex
+       // returns true if this thread now owns the lock
+       bool lock(core_id_t core_id);
+ 
++      // returns true if the lock is owned by someone that is not this thread
++      bool locked(core_id_t core_id);
++
+       // returns the next owner of the lock so that it can be signaled by
+       // the server
+       core_id_t unlock(core_id_t core_id);
+@@ -44,7 +47,7 @@ class SimCond
+       ~SimCond();
+ 
+       // returns the thread that gets woken up when the mux is unlocked
+-      core_id_t wait(core_id_t core_id, UInt64 time, StableIterator<SimMutex> & it);
++      core_id_t wait(core_id_t core_id, UInt64 time, SimMutex * mux);
+       core_id_t signal(core_id_t core_id, UInt64 time);
+       void broadcast(core_id_t core_id, UInt64 time, WakeupList &woken);
+ 
+@@ -52,10 +55,10 @@ class SimCond
+       class CondWaiter
+       {
+          public:
+-            CondWaiter(core_id_t core_id, StableIterator<SimMutex> mutex, UInt64 time)
++            CondWaiter(core_id_t core_id, SimMutex * mutex, UInt64 time)
+                   : m_core_id(core_id), m_mutex(mutex), m_arrival_time(time) {}
+             core_id_t m_core_id;
+-            StableIterator<SimMutex> m_mutex;
++            SimMutex * m_mutex;
+             UInt64 m_arrival_time;
+       };
+ 
+@@ -85,8 +88,8 @@ class SimBarrier
+ 
+ class SyncServer
+ {
+-      typedef std::vector<SimMutex> MutexVector;
+-      typedef std::vector<SimCond> CondVector;
++      typedef std::map<carbon_mutex_t *, SimMutex> MutexVector;
++      typedef std::map<carbon_cond_t *, SimCond> CondVector;
+       typedef std::vector<SimBarrier> BarrierVector;
+ 
+       MutexVector m_mutexes;
+@@ -116,6 +119,9 @@ class SyncServer
+    private:
+       Network &m_network;
+       UnstructuredBuffer &m_recv_buffer;
++
++      SimMutex * getMutex(carbon_mutex_t * mux, bool canCreate = true);
++      SimCond * getCond(carbon_cond_t * cond, bool canCreate = true);
+ };
+ 
+ #endif // SYNC_SERVER_H
+diff --git a/common/user/sync_api.cc b/common/user/sync_api.cc
+index 5f06261..9e18314 100644
+--- a/common/user/sync_api.cc
++++ b/common/user/sync_api.cc
+@@ -23,6 +23,12 @@ void CarbonMutexLock(carbon_mutex_t *mux)
+    core->getSyncClient()->mutexLock(mux);
+ }
+ 
++bool CarbonMutexTrylock(carbon_mutex_t *mux)
++{
++   Core *core = Sim()->getCoreManager()->getCurrentCore();
++   return core->getSyncClient()->mutexTrylock(mux);
++}
++
+ void CarbonMutexUnlock(carbon_mutex_t *mux)
+ {
+    Core *core = Sim()->getCoreManager()->getCurrentCore();
+diff --git a/common/user/sync_api.h b/common/user/sync_api.h
+index df8cf23..693a447 100644
+--- a/common/user/sync_api.h
++++ b/common/user/sync_api.h
+@@ -18,6 +18,7 @@ typedef SInt32 carbon_barrier_t;
+ 
+ void CarbonMutexInit(carbon_mutex_t *mux);
+ void CarbonMutexLock(carbon_mutex_t *mux);
++bool CarbonMutexTrylock(carbon_mutex_t *mux);
+ void CarbonMutexUnlock(carbon_mutex_t *mux);
+ bool CarbonIsMutexValid(carbon_mutex_t *mux);
+ 
+diff --git a/pin/routine_replace.cc b/pin/routine_replace.cc
+index c8575fb..6e0fd9b 100644
+--- a/pin/routine_replace.cc
++++ b/pin/routine_replace.cc
+@@ -5,6 +5,8 @@
+ #include "carbon_user.h"
+ #include "thread_support_private.h"
+ 
++#include <errno.h>
++
+ // -------------------------------------
+ // Begin Memory redirection stuff
+ #include "config.h"
+@@ -88,9 +90,21 @@ bool replaceUserAPIFunction(RTN& rtn, string& name)
+ 
+    // pthread wrappers
+    else if (name.find("pthread_create") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadCreate);
++   else if (name.find("pthread_self") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadSelf);
+    else if (name.find("pthread_join") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadJoin);
++   else if (name.find("pthread_mutex_init") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadMutexInit);
++   else if (name.find("pthread_mutex_lock") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadMutexLock);
++   else if (name.find("pthread_mutex_trylock") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadMutexTrylock);
++   else if (name.find("pthread_mutex_unlock") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadMutexUnlock);
++   else if (name.find("pthread_mutex_destroy") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadMutexDestroy);
++   else if (name.find("pthread_cond_init") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadCondInit);
++   else if (name.find("pthread_cond_wait") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadCondWait);
++   else if (name.find("pthread_cond_signal") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadCondSignal);
++   else if (name.find("pthread_cond_broadcast") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadCondBroadcast);
++   else if (name.find("pthread_cond_destroy") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadCondDestroy);
+    else if (name.find("pthread_barrier_init") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadBarrierInit);
+    else if (name.find("pthread_barrier_wait") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadBarrierWait);
++   else if (name.find("pthread_barrier_destroy") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadBarrierDestroy);
+    else if (name.find("pthread_exit") != std::string::npos) msg_ptr = AFUNPTR(replacementPthreadExitNull);
+ 
+    // For Getting the Simulated Time
+@@ -579,6 +593,10 @@ void replacementMutexUnlock (CONTEXT *ctxt)
+    retFromReplacedRtn (ctxt, ret_val);
+ }
+ 
++void replacementPthreadMutexDestroy(CONTEXT *ctxt) {
++   retFromReplacedRtn (ctxt, 0);
++}
++
+ void replacementCondInit (CONTEXT *ctxt)
+ {
+    // Only the user-threads (all of which are cores) call
+@@ -665,6 +683,11 @@ void replacementCondBroadcast (CONTEXT *ctxt)
+    retFromReplacedRtn (ctxt, ret_val);
+ }
+ 
++void replacementPthreadCondDestroy(CONTEXT *ctxt)
++{
++   retFromReplacedRtn (ctxt, 0);
++}
++
+ void replacementBarrierInit (CONTEXT *ctxt)
+ {
+    carbon_barrier_t *barrier;
+@@ -704,6 +727,11 @@ void replacementBarrierWait (CONTEXT *ctxt)
+    retFromReplacedRtn (ctxt, ret_val);
+ }
+ 
++void replacementPthreadBarrierDestroy(CONTEXT *ctxt)
++{
++   retFromReplacedRtn (ctxt, 0);
++}
++
+ //assumption: the pthread_create from the ThreadSpawner is the first pthread_create() we encounter, and we need to let it fall through
+ bool pthread_create_first_time = true; 
+ 
+@@ -737,6 +765,10 @@ void replacementPthreadCreate (CONTEXT *ctxt)
+       
+       if (attributes != NULL)
+       {
++         char sum = 0;
++         for(int i = 0; i < __SIZEOF_PTHREAD_ATTR_T; ++i)
++            sum |= attributes->__size[i];
++         if (sum)
+          fprintf(stdout, "Warning: pthread_create() is using unsupported attributes.\n");
+       }
+       
+@@ -753,6 +785,13 @@ void replacementPthreadCreate (CONTEXT *ctxt)
+    }
+ }
+ 
++void replacementPthreadSelf (CONTEXT *ctxt)
++{
++   Core *core = Sim()->getCoreManager()->getCurrentCore();
++   assert (core);
++   retFromReplacedRtn (ctxt, core->getId());
++}
++
+ void replacementPthreadJoin (CONTEXT *ctxt)
+ {
+    pthread_t thread_id;
+@@ -780,6 +819,132 @@ void replacementPthreadExitNull (CONTEXT *ctxt)
+    retFromReplacedRtn (ctxt, ret_val);
+ }
+ 
++void replacementPthreadMutexInit (CONTEXT *ctxt)
++{
++   pthread_mutex_t *mux;
++   pthread_mutexattr_t *attributes;
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &mux,
++         IARG_PTR, &attributes,
++         IARG_END);
++
++   //TODO: add support for different attributes and throw warnings for unsupported attrs
++   if (attributes != NULL)
++   {
++      char sum = 0;
++      for(int i = 0; i < __SIZEOF_PTHREAD_MUTEXATTR_T; ++i)
++         sum |= attributes->__size[i];
++      if (sum)
++         fprintf(stdout, "Warning: pthread_mutex_init() is using unsupported attributes.\n");
++   }
++
++   CarbonMutexInit((carbon_mutex_t*) mux);
++
++   retFromReplacedRtn (ctxt, 0);
++}
++
++void replacementPthreadMutexLock (CONTEXT *ctxt)
++{
++   pthread_mutex_t *mux;
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &mux,
++         IARG_END);
++
++   CarbonMutexLock((carbon_mutex_t*) mux);
++
++   retFromReplacedRtn (ctxt, 0);
++}
++
++void replacementPthreadMutexTrylock (CONTEXT *ctxt)
++{
++   pthread_mutex_t *mux;
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &mux,
++         IARG_END);
++
++   bool res = CarbonMutexTrylock((carbon_mutex_t*) mux);
++
++   retFromReplacedRtn (ctxt, res ? EBUSY : 0);
++}
++
++void replacementPthreadMutexUnlock (CONTEXT *ctxt)
++{
++   pthread_mutex_t *mux;
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &mux,
++         IARG_END);
++
++   CarbonMutexUnlock((carbon_mutex_t*) mux);
++
++   retFromReplacedRtn (ctxt, 0);
++}
++
++void replacementPthreadCondInit (CONTEXT *ctxt)
++{
++   pthread_cond_t *cond;
++   pthread_condattr_t *attributes;
++
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &cond,
++         IARG_PTR, &attributes,
++         IARG_END);
++
++   //TODO: add support for different attributes and throw warnings for unsupported attrs
++   if (attributes != NULL)
++   {
++      char sum = 0;
++      for(int i = 0; i < __SIZEOF_PTHREAD_CONDATTR_T; ++i)
++         sum |= attributes->__size[i];
++      if (sum)
++         fprintf(stdout, "Warning: pthread_cond_init() is using unsupported attributes.\n");
++   }
++
++   CarbonCondInit ((carbon_cond_t*) cond);
++
++   retFromReplacedRtn (ctxt, 0);
++}
++
++void replacementPthreadCondWait (CONTEXT *ctxt)
++{
++   pthread_cond_t *cond;
++   pthread_mutex_t *mutex;
++
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &cond,
++         IARG_PTR, &mutex,
++         IARG_END);
++
++   CarbonCondWait ((carbon_cond_t*) cond, (carbon_mutex_t*) mutex);
++
++   retFromReplacedRtn (ctxt, 0);
++}
++
++void replacementPthreadCondSignal (CONTEXT *ctxt)
++{
++   pthread_cond_t *cond;
++
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &cond,
++         IARG_END);
++
++   CarbonCondSignal ((carbon_cond_t*) cond);
++
++   retFromReplacedRtn (ctxt, 0);
++}
++
++void replacementPthreadCondBroadcast (CONTEXT *ctxt)
++{
++   carbon_cond_t *cond;
++
++   initialize_replacement_args (ctxt,
++         IARG_PTR, &cond,
++         IARG_END);
++
++   CarbonCondBroadcast ((carbon_cond_t*) cond);
++
++   retFromReplacedRtn (ctxt, 0);
++}
++
+ void replacementPthreadBarrierInit (CONTEXT *ctxt)
+ {
+    pthread_barrier_t *barrier;
+@@ -795,13 +960,22 @@ void replacementPthreadBarrierInit (CONTEXT *ctxt)
+    //TODO: add support for different attributes and throw warnings for unsupported attrs
+    if (attributes != NULL)
+    {
++      char sum = 0;
++      for(int i = 0; i < __SIZEOF_PTHREAD_BARRIERATTR_T; ++i)
++         sum |= attributes->__size[i];
++      if (sum)
+       fprintf(stdout, "Warning: pthread_barrier_init() is using unsupported attributes.\n");
+    }
+    
+-   CarbonBarrierInit((carbon_barrier_t*) barrier, count);
++   carbon_barrier_t barrier_buf;
+    
+-   ADDRINT ret_val = PIN_GetContextReg (ctxt, REG_GAX);
+-   retFromReplacedRtn (ctxt, ret_val);
++   Core *core = Sim()->getCoreManager()->getCurrentCore();
++   assert (core);
++   core->accessMemory (Core::NONE, Core::READ, (ADDRINT) barrier, (char*) &barrier_buf, sizeof (barrier_buf));
++   CarbonBarrierInit (&barrier_buf, count);
++   core->accessMemory (Core::NONE, Core::WRITE, (ADDRINT) barrier, (char*) &barrier_buf, sizeof (barrier_buf));
++
++   retFromReplacedRtn (ctxt, 0);
+ }
+ 
+ void replacementPthreadBarrierWait (CONTEXT *ctxt)
+@@ -812,10 +986,14 @@ void replacementPthreadBarrierWait (CONTEXT *ctxt)
+          IARG_PTR, &barrier,
+          IARG_END);
+ 
+-   CarbonBarrierWait((carbon_barrier_t*) barrier);
++   carbon_barrier_t barrier_buf;
+    
+-   ADDRINT ret_val = PIN_GetContextReg (ctxt, REG_GAX);
+-   retFromReplacedRtn (ctxt, ret_val);
++   Core *core = Sim()->getCoreManager()->getCurrentCore();
++   assert (core);
++   core->accessMemory (Core::NONE, Core::READ, (ADDRINT) barrier, (char*) &barrier_buf, sizeof (barrier_buf));
++   CarbonBarrierWait (&barrier_buf);
++
++   retFromReplacedRtn (ctxt, 0); /* TODO: should return PTHREAD_BARRIER_SERIAL_THREAD to *one* of the threads waiting on this barrier */
+ }
+ 
+ void replacementEnableModels(CONTEXT* ctxt)
+diff --git a/pin/routine_replace.h b/pin/routine_replace.h
+index 0068c54..d402203 100644
+--- a/pin/routine_replace.h
++++ b/pin/routine_replace.h
+@@ -47,11 +47,23 @@ void replacement_CAPI_message_send_w_ex (CONTEXT *ctxt);
+ void replacement_CAPI_message_receive_w_ex (CONTEXT *ctxt);
+ 
+ // pthread
+-void replacementPthreadCreate(CONTEXT *ctxt);
+-void replacementPthreadJoin(CONTEXT *ctxt);
+-void replacementPthreadExitNull(CONTEXT *ctxt);
+-void replacementPthreadBarrierInit(CONTEXT *ctxt);
+-void replacementPthreadBarrierWait(CONTEXT *ctxt);
++void replacementPthreadCreate (CONTEXT *ctxt);
++void replacementPthreadSelf (CONTEXT *ctxt);
++void replacementPthreadJoin (CONTEXT *ctxt);
++void replacementPthreadExitNull (CONTEXT *ctxt);
++void replacementPthreadMutexInit (CONTEXT *ctxt);
++void replacementPthreadMutexLock (CONTEXT *ctxt);
++void replacementPthreadMutexTrylock (CONTEXT *ctxt);
++void replacementPthreadMutexUnlock (CONTEXT *ctxt);
++void replacementPthreadMutexDestroy(CONTEXT *ctxt);
++void replacementPthreadCondInit (CONTEXT *ctxt);
++void replacementPthreadCondWait (CONTEXT *ctxt);
++void replacementPthreadCondSignal (CONTEXT *ctxt);
++void replacementPthreadCondBroadcast (CONTEXT *ctxt);
++void replacementPthreadCondDestroy(CONTEXT *ctxt);
++void replacementPthreadBarrierInit (CONTEXT *ctxt);
++void replacementPthreadBarrierWait (CONTEXT *ctxt);
++void replacementPthreadBarrierDestroy(CONTEXT *ctxt);
+ 
+ // Enable/Disable Models
+ void replacementEnableModels(CONTEXT* ctxt);
