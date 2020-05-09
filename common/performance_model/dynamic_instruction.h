@@ -5,6 +5,8 @@
 #include "subsecond_time.h"
 #include "hit_where.h"
 #include "allocator.h"
+#include <iostream>
+#include <sstream>
 
 class Core;
 class Instruction;
@@ -20,6 +22,11 @@ class DynamicInstruction
          branch_info.is_branch = false;
          num_memory = 0;
 	 is_xchg = false;
+	 is_marker = false; //tells that XCHG is mem dep marker
+	 is_marker_end = false; // tells the end of marker
+	 is_marker_begin = false; //tells the begin on marker
+	 is_marker_dep = false; //tells if marker xchg is dep then save the value
+	 marker_value = 0; //tells the marker value (only set for marker dep xchg's)
       }
    public:
       struct BranchInfo
@@ -46,7 +53,14 @@ class DynamicInstruction
       MemoryInfo memory_info[MAX_MEMORY];
       bool is_xchg;
       int reg_value;
-
+      bool is_marker; //tells that XCHG is mem dep marker
+      //int final_marker_value;
+      //int marker_value[264];
+      //int marker_index ;
+      bool is_marker_end; // tells the end of marker
+      bool is_marker_begin; //tells the begin on marker
+      bool is_marker_dep; //tells if marker xchg is dep then save the value
+      int marker_value; //tells the marker value (only set for marker dep xchg's)
       static Allocator* createAllocator();
 
       ~DynamicInstruction();
@@ -89,6 +103,37 @@ class DynamicInstruction
 	is_xchg = true;
 	reg_value = value;
       }
+
+       void setMarker(bool marker){is_marker = marker;} 
+       bool getMarker() const { return is_marker;}
+       
+       void setStartMarker() {is_marker_begin = true;}
+       void setEndMarker() {is_marker_end = true; }
+       void SetMarkerValue(int value){marker_value = value;}
+       void setMarkerDep(bool dep){is_marker_dep = dep;}
+
+       bool getStartMarker() const {return is_marker_begin;}
+       bool getEndMarker() const {return is_marker_end;}
+       int getMarkerValue() const {return marker_value;}
+       bool getMarkerDep() const {return is_marker_dep;}
+      /* void resetMarkerValue(){ */
+      /* 	for (int i = 0; i < 264; i++)  */
+      /* 	{ */
+      /* 	  marker_value[i] = 0; */
+      /* 	} */
+      /* } */
+      /* int FinalMarkerValue() { */
+      /* 	std::cout<<"Final cal "<<marker_value[0]<<marker_index<<"\n"; */
+      /* 	std::stringstream ss; */
+      /* 	for (int i = 0; i < marker_index; ++i) */
+      /* 	  ss << marker_value[i]; */
+      /* 	int result; */
+      /* 	ss >> result; */
+      /* 	return result; */
+      /* } */
+      /* int GetFinalMarkerValue() { */
+      /* 	return final_marker_value; */
+       //  }
 
       SubsecondTime getBranchCost(Core *core, bool *p_is_mispredict = NULL);
       void accessMemory(Core *core);

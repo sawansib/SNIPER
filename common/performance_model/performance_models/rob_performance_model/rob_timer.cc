@@ -743,14 +743,19 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
     if ((*it)->getMicroOp()->is_trace)
     {
       auto current_cmd = (*it)->getMicroOp()->trace_data[0];
-      //std::cout<<"DEBUG ::"<<current_cmd<<" "<<thread_id<<"\n";
+
+      //deptrace_f << " SPECIAL " << current_cmd << " ";
+      std::cout << current_cmd <<" "<<thread_id<<" "<<deptraceRMSIsActive(thread_id)<<sync_instr_pending<<"\n";
       switch (current_cmd)
       {
+
 	//Init_DONE
       case 0:
 	if (!deptrace_roi)
 	{
 	  deptraceRMSSetActive(thread_id, true);
+	  //std::cout << current_cmd <<" "<<thread_id<<" "<<deptraceRMSIsActive(thread_id)<<"\n";
+	  //assert(false);
 	}
 	break;
 
@@ -974,7 +979,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	// BEGIN_XDRF
       case 19:
 	if (deptraceRMSIsActive(thread_id))
-	{
+	  {
 	  if (deptrace_last_was_newline)
 	    deptrace_last_was_newline = false;
 	  else
@@ -984,7 +989,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  deptrace_last_was_newline = true;
 	}
 	break;
-	// BEGIN_XDRF
+	// END_XDRF
       case 20:
 	if (deptraceRMSIsActive(thread_id))
 	{

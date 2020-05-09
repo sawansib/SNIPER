@@ -20,6 +20,7 @@
 #include "dvfs_manager.h"
 #include "hooks_manager.h"
 #include "branch_predictor.h"
+#include "dynamic_micro_op.h"
 
 #include <unordered_map>
 
@@ -93,6 +94,91 @@ static void handleXchg(const CONTEXT *ctxt, THREADID thread_id) {
   }
   assert(localStore[thread_id].dynins);
   localStore[thread_id].dynins->setXchgRegValue(int(regVal));
+}
+
+static void handleXchgRDI(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true); //Sends the info that this XCHG belongs to the Mem Dep project
+  localStore[thread_id].dynins->setStartMarker(); //Make the Marker true for that instruction
+}
+
+static void handleXchgRCX(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setEndMarker();
+}
+
+static void handleXchgRBX(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+ }
+
+static void handleXchgDep0(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(0);
+}
+
+static void handleXchgDep1(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(1);
+}
+
+static void handleXchgDep2(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(2);
+}
+static void handleXchgDep3(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(3);
+}
+
+static void handleXchgDep4(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(4);
+}
+
+static void handleXchgDep5(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(5);
+}
+
+static void handleXchgDep6(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(6);
+}
+
+static void handleXchgDep7(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerDep(true);
+  localStore[thread_id].dynins->SetMarkerValue(7);
+}
+
+
+VOID InstructionModeling::handleXchgDep(const CONTEXT *ctxt, THREADID thread_id, INS ins) {
+  localStore[thread_id].dynins->setXchgRegValue(0);
+  if (INS_OperandReg(ins, 0) == REG_R8 && INS_OperandReg(ins, 1) == REG_R8)
+    localStore[thread_id].dynins->SetMarkerValue(0);
+  else if (INS_OperandReg(ins, 0) == REG_R9 && INS_OperandReg(ins, 1) == REG_R9)
+    localStore[thread_id].dynins->SetMarkerValue(1);
+  else if (INS_OperandReg(ins, 0) == REG_R10 && INS_OperandReg(ins, 1) == REG_R10)
+    localStore[thread_id].dynins->SetMarkerValue(2);
+  else if (INS_OperandReg(ins, 0) == REG_R11 && INS_OperandReg(ins, 1) == REG_R11)
+    localStore[thread_id].dynins->SetMarkerValue(3);
+  else if (INS_OperandReg(ins, 0) == REG_R12 && INS_OperandReg(ins, 1) == REG_R12)
+    localStore[thread_id].dynins->SetMarkerValue(4);
+  else if (INS_OperandReg(ins, 0) == REG_R13 && INS_OperandReg(ins, 1) == REG_R13)
+    localStore[thread_id].dynins->SetMarkerValue(5);
+  else if (INS_OperandReg(ins, 0) == REG_R14 && INS_OperandReg(ins, 1) == REG_R14)
+    localStore[thread_id].dynins->SetMarkerValue(6);
+  else if (INS_OperandReg(ins, 0) == REG_R15 && INS_OperandReg(ins, 1) == REG_R15)
+    localStore[thread_id].dynins->SetMarkerValue(7);
+  else
+    assert(false);
+  //assert(localStore[thread_id].dynins);
 }
 
 static void handleRdtsc(THREADID thread_id, PIN_REGISTER * gax, PIN_REGISTER * gdx)
@@ -299,7 +385,113 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 	 IARG_THREAD_ID, 
 	 IARG_END);
      }
-   }
+     
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RDI) {
+       //cerr << "RDI \n";
+       INSTRUMENT_PREDICATED(
+         INSTR_IF_DETAILED(inst_mode),
+         trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRDI, 
+	 IARG_CONST_CONTEXT, 
+	 IARG_THREAD_ID, 
+	 IARG_END);
+     }
+
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RCX) {
+       //cerr << "RCX \n";
+       INSTRUMENT_PREDICATED(
+         INSTR_IF_DETAILED(inst_mode),
+         trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRCX, 
+	 IARG_CONST_CONTEXT, 
+	 IARG_THREAD_ID, 
+	 IARG_END);
+     }
+
+     
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RBX) {
+       //cerr << "RBX \n";
+       INSTRUMENT_PREDICATED(
+         INSTR_IF_DETAILED(inst_mode),
+         trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRBX, 
+	 IARG_CONST_CONTEXT, 
+	 IARG_THREAD_ID, 
+	 IARG_END);
+     }
+     
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R8){
+       //cerr << "R8 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep0, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R9){
+       //cerr << "R9 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep1, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R10){
+       //cerr << "R10 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep2, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R11){
+       //cerr << "R11 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep3, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R12){
+       //cerr << "R12 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep4, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R13){
+       //cerr << "R13 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep5, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R14){
+       //cerr << "R14 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep6, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R15){
+       //cerr << "R15 \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep7, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+   }   
 
    if (!INS_IsSyscall(ins))
    {

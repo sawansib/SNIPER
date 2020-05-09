@@ -31,7 +31,7 @@ else:
     raise "Demasiados argumentos"
 
 skip_set_file = None
-sniperexec = "/home/users/ssingh/sniper_v2/run-sniper"
+sniperexec = "/home/users/ssingh/sniper/run-sniper"
 sniperoptspre = "-cgainestown -crob -gperf_model/dram/num_controllers=1 -gperf_model/l3_cache/shared_cores="
 sniperoptspost = " -gperf_model/l2_cache/perfect=true -gperf_model/l3_cache/perfect=true -gperf_model/l1_icache/perfect=true  -gperf_model/dram/direct_access=true -ggeneral/enable_icache_modeling=false -gperf_model/branch_predictor/type=none -gperf_model/l1_dcache/perfect=true -gclock_skew_minimization/barrier/quantum=2147483647 -gperf_model/dtlb/size=0 -gperf_model/core/interval_timer/window_size=256 -gperf_model/core/rob_timer/rs_entries=256 -gperf_model/core/rob_timer/outstanding_loads=256 -gperf_model/core/rob_timer/outstanding_stores=256 -gperf_model/core/rob_timer/commit_width=4 -gperf_model/core/rob_timer/deptrace=true -gperf_model/core/rob_timer/store_to_load_forwarding=false -gperf_model/core/rob_timer/deptrace_microops=true"
 # Enable it to trace the whole app from start.
@@ -41,6 +41,7 @@ sniperoptsroi = "-gperf_model/core/rob_timer/deptrace_start_active=true --no-cac
 # Other tries
 #sniperoptsroi = "-gperf_model/core/rob_timer/deptrace_start_active=false -gperf_model/core/rob_timer/deptrace_roi=false --no-cache-warming"
 #sniperoptsroi = "-gperf_model/core/rob_timer/deptrace_start_active=false -gperf_model/core/rob_timer/deptrace_roi=true --roi --no-cache-warming"
+#sniperoptsroi = "-gperf_model/core/rob_timer/deptrace_start_active=true -gperf_model/core/rob_timer/deptrace_roi=true --roi --no-cache-warming" #works   
 benchdir = "/home/users/ssingh/"
 
 vars = {
@@ -420,16 +421,16 @@ configs = config_vary(configs, "BENCHMARK", [
         #"fluidanimatexDRF++",
         # "streamclusterxDRF++",
         
-        #"blackscholesxDRF20",
-       # "facesimxDRF20",
-        #"fluidanimatexDRF20",
-       # "vipsxDRF20",
+       # "blackscholesxDRF20",
+        #"facesimxDRF20",
+       # "fluidanimatexDRF20",
+        #"vipsxDRF20",
         #"bodytrackxDRF20",
-        "ferretxDRF20",
+        #"ferretxDRF20",
         #"swaptionsxDRF20",
         #"x264xDRF20",
         #"dedupxDRF20",
-        #"cannealxDRF20",
+        "cannealxDRF20",
         #"streamclusterxDRF20",
         ])
 

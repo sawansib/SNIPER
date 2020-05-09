@@ -97,8 +97,9 @@ VOID RoutineTraceGen(RTN rtn, VOID *v) {
   //std::cerr << __FUNCTION__ << " called!\n";
 
   string name = RTN_Name(rtn);
-  //if (name.find("RMS_") != string::npos)cerr << name << endl;
+  //cerr << name << endl;
   RTN_Open(rtn);
+
   if (name.find("RMS_Initialization_Done") != string::npos){
     //RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)initialization_done, IARG_THREAD_ID, IARG_END);
     RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)sendTraceInsn, IARG_THREAD_ID,
@@ -388,9 +389,6 @@ VOID RoutineTraceGen(RTN rtn, VOID *v) {
 	      || name.compare("pthread_cond_signal") == 0 
 	      || name.compare("pthread_cond_broadcast") == 0 
 	      || name.compare("pthread_cond_wait") == 0
-	      || name.compare("__pthread_cond_wait") == 0
-	      || name.compare("__pthread_cond_broadcast") == 0
-	      || name.compare("__pthread_cond_signal") == 0
 	      || name.compare("sem_post") == 0
 	      || name.compare("sem_wait") == 0){
   RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)sendTraceInsn, IARG_THREAD_ID,

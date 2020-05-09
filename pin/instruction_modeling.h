@@ -18,6 +18,7 @@ class InstructionModeling
       static void handleBasicBlock(THREADID thread_id);
       static VOID countInstructions(THREADID threadid, ADDRINT address, INT32 count);
       static VOID accessInstructionCacheWarmup(THREADID threadid, ADDRINT address, UINT32 size);
+      static VOID handleXchgDep(const CONTEXT *ctxt, THREADID thread_id, INS ins);
 };
 
 #endif
