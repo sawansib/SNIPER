@@ -408,6 +408,23 @@ RobTimer::RobEntry *RobTimer::findEntryBySequenceNumber(UInt64 sequenceNumber)
   return entry;
 }
 
+void RobTimer::resetDepValue(){
+  for (int i = 0; i < 64; i++)
+    {
+      DepValue[i] = 0;
+    }
+}
+
+int RobTimer::FinalMarkerValue() {
+  //std::cout<<"Final cal "<<DepValue[0]<<marker_index<<"\n";
+      	std::stringstream ss;
+      	for (int i = 0; i < marker_index; ++i)
+      	  ss << DepValue[i];
+      	int result;
+      	ss >> result;
+      	return result;
+      }
+
 long long RobTimer::getPCDiff(uint64_t pc1, uint64_t pc2)
 {
   long long diff;
@@ -436,7 +453,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
   uint64_t totalInsnExec = 0;
   SubsecondTime totalLat = SubsecondTime::Zero();
   std::ostream& deptrace_f = *_deptrace_f;
-
+  
   Thread* thread = Sim()->getThreadManager()->getThreadOnCore(m_core->getId());
   thread_id_t thread_id = thread ? thread->getId() : 0xffffffff;
 
@@ -559,7 +576,6 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
      * Example: 
      *  2 A0 3d1 B2d2t-120* L5d1 fff0 4
      */
-
     if (deptraceIsActive(thread_id))
     {
       // Collects whether we are a load/store/branch over time
@@ -594,18 +610,18 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  deptrace_first_line = false;
 	  instr_to_insert_clear_stats = Sim()->getCfg()->getInt("rob_timer/insert-clear-stats-by-icount");
 	}
-	 
+
 	if (deptrace_is_load)
 	{
 	  if (deptrace_last_was_newline)
 	    deptrace_last_was_newline = false;
 	  else
-	    deptrace_f << " ";
+	   deptrace_f << " ";
 	  if (dmo.getMicroOp()->getInstruction()->isAtomic()) 
 	    deptrace_f << "LA" << getPCDiffAndUpdateLast(); // Load uop (part of an atomic instruction)
 	  else
 	    deptrace_f << "L" << getPCDiffAndUpdateLast();
-               
+	                 
 #if DEBUG_DEPTRACE >= 1
 	  deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
 #endif
@@ -617,11 +633,22 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  {
 	    deptrace_f << "m" << mdep;
 	  }
+
+	  if(next_load_marker){
+	    assert(last_load_pending == true);
+	    if(is_not_known)
+	      deptrace_f <<"n";
+	    else
+	      deptrace_f <<"s"<<final_DepValue;
+	  }
 	  assert(deptrace_addr_deps.size() == 0);
 	  deptrace_f << " " << std::hex << deptrace_load_addr << std::dec;
 	  deptrace_f << " " << deptrace_load_size << "\n";
 	  deptrace_load_addr = 0x0;
 	  deptrace_last_was_newline = true;
+	  next_load_marker = false;
+	  last_load_pending = false;
+		  
 	}
           
 	if (deptrace_is_store)
@@ -654,6 +681,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  deptrace_f << " " << deptrace_store_size << "\n";
 	  deptrace_store_addr = 0x0;
 	  deptrace_last_was_newline = true;
+	  
 	}
 
 	if (deptrace_is_branch)
@@ -684,7 +712,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    deptrace_f << "*";
 	  }
 	}
-
+	
 	// For non-branch, non load, non-store instructions
 	if (!deptrace_is_branch && !deptrace_is_load && !deptrace_is_store)
 	{
@@ -699,7 +727,35 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	      deptrace_f << "BEGIN_iNDRF " << dmo.getRegValue() << " ";
 	    else 
 	      deptrace_f << "END_iNDRF " << 0 - dmo.getRegValue() << " ";
-	  } else if (dmo.getMicroOp()->getSubtype() == MicroOp::UOP_SUBTYPE_FP_ADDSUB) {
+	  }
+	  
+	  if(dmo.mGetMarker()){
+	    if (dmo.mGetMarkerBegin()){
+	      assert(last_load_pending == false);
+	      assert(look_for_value == false);
+	      ss.str(""); //reset for new value
+	      final_DepValue = 0;
+	      look_for_value = true; //begin looking for values
+	    }
+	   
+	    if (dmo.mGetMarkerEnd()){
+	      look_for_value = false; //stop looking for value
+	      last_load_pending = true;
+	      next_load_marker = true;
+	    }
+
+	    if (dmo.mGetIsNotKnown()){
+	      assert(is_not_known == false);
+	      is_not_known = true;
+	    }
+
+	    if (look_for_value && dmo.mGetMarkerDep()){
+	      ss << dmo.mGetMarkerValue(); //save value
+	      ss >> final_DepValue;
+	    }
+	  }
+	  
+	  else if (dmo.getMicroOp()->getSubtype() == MicroOp::UOP_SUBTYPE_FP_ADDSUB) {
 	    deptrace_f << "A";
 	  } else if (dmo.getMicroOp()->getSubtype() == MicroOp::UOP_SUBTYPE_FP_MUL) { 
 	    deptrace_f << "M";

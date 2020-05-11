@@ -358,15 +358,14 @@ void MicroOpPerformanceModel::handleInstruction(DynamicInstruction *dynins)
       if (dynins->is_xchg) {
 	m_current_uops[exec_base_index]->setXchgRegValue(dynins->reg_value);
       }
-
       if (dynins->is_marker){
-	//std::cout<<dynins->is_marker_begin<<dynins->is_marker_end<<dynins->is_marker_dep<<dynins->marker_value<<"\n";
+	//std::cout<<dynins->is_marker_begin<<dynins->is_marker_end<<dynins->is_marker<<"\n";
+	m_current_uops[exec_base_index]->mSetMarker(dynins->is_marker);
 	m_current_uops[exec_base_index]->mSetMarkerBegin(dynins->is_marker_begin);
 	m_current_uops[exec_base_index]->mSetMarkerEnd(dynins->is_marker_end);
 	m_current_uops[exec_base_index]->mSetMarkerDep(dynins->is_marker_dep);
 	m_current_uops[exec_base_index]->mSetMarkerValue(dynins->marker_value);
-
-		
+	m_current_uops[exec_base_index]->mSetIsNotKnown(dynins->is_not_known);		
       }
    #if DEBUG_INSN_LOG
       if (insn_cost > 17)

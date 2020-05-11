@@ -27,6 +27,7 @@ class DynamicInstruction
 	 is_marker_begin = false; //tells the begin on marker
 	 is_marker_dep = false; //tells if marker xchg is dep then save the value
 	 marker_value = 0; //tells the marker value (only set for marker dep xchg's)
+	 is_not_known = false;
       }
    public:
       struct BranchInfo
@@ -61,6 +62,7 @@ class DynamicInstruction
       bool is_marker_begin; //tells the begin on marker
       bool is_marker_dep; //tells if marker xchg is dep then save the value
       int marker_value; //tells the marker value (only set for marker dep xchg's)
+      bool is_not_known;
       static Allocator* createAllocator();
 
       ~DynamicInstruction();
@@ -108,16 +110,18 @@ class DynamicInstruction
        bool getMarker() const { return is_marker;}
        
        void setStartMarker() {is_marker_begin = true;}
-       void setEndMarker() {is_marker_end = true; }
+       void setEndMarker() {is_marker_end = true;}
        void SetMarkerValue(int value){marker_value = value;}
        void setMarkerDep(bool dep){is_marker_dep = dep;}
+       void setNotKnown() {is_not_known = true;}
 
+       bool getNotKnown() const {return is_not_known;}
        bool getStartMarker() const {return is_marker_begin;}
        bool getEndMarker() const {return is_marker_end;}
        int getMarkerValue() const {return marker_value;}
        bool getMarkerDep() const {return is_marker_dep;}
       /* void resetMarkerValue(){ */
-      /* 	for (int i = 0; i < 264; i++)  */
+      /* 	for (int i = 0; i < 264; i++) */
       /* 	{ */
       /* 	  marker_value[i] = 0; */
       /* 	} */
@@ -133,7 +137,7 @@ class DynamicInstruction
       /* } */
       /* int GetFinalMarkerValue() { */
       /* 	return final_marker_value; */
-       //  }
+      /*   } */
 
       SubsecondTime getBranchCost(Core *core, bool *p_is_mispredict = NULL);
       void accessMemory(Core *core);

@@ -66,11 +66,12 @@ class DynamicMicroOp
 
       bool m_is_xchg;
       int m_reg_value;
-      bool m_is_marker; //tells that XCHG is mem dep marker
-      bool m_is_marker_end; // tells the end of marker
-      bool m_is_marker_begin; //tells the begin on marker
-      bool m_is_marker_dep; //tells if marker xchg is dep then save the value
-      int m_marker_value; //tells the marker value (only set for marker dep xchg's)
+      bool m_is_marker = false; //tells that XCHG is mem dep marker
+      bool m_is_marker_end = false; // tells the end of marker
+      bool m_is_marker_begin = false; //tells the begin on marker
+      bool m_is_marker_dep = false; //tells if marker xchg is dep then save the value
+      int m_marker_value= 0; //tells the marker value (only set for marker dep xchg's)
+      bool m_is_not_known = false;
       // architecture-specific information to be defined in derived classes
 
 
@@ -159,16 +160,20 @@ class DynamicMicroOp
       void setXchgRegValue(int value) { m_is_xchg = true; m_reg_value = value; }
       bool isXchg() const { return m_is_xchg; }
       int getRegValue() const { return m_reg_value; }
-      
-      void mSetMarkerBegin(bool mark) {m_is_marker_begin = mark;} 
-      void mSetMarkerEnd(bool mark) {m_is_marker_end = mark;} 
+
+      void mSetMarker(bool mark) {m_is_marker = mark;} 
+      void mSetMarkerBegin(bool mark_begin) {m_is_marker_begin = mark_begin;} 
+      void mSetMarkerEnd(bool mark_end) {m_is_marker_end = mark_end;} 
       void mSetMarkerDep(bool dep) {m_is_marker_dep = dep;} 
       void mSetMarkerValue(int value) {m_marker_value = value;}
-      
-      bool mSetMarkerBegin() const {return m_is_marker_begin;} 
-      bool mSetMarkerEnd() const {return m_is_marker_end;} 
-      bool mSetMarkerDep() const {return m_is_marker_dep;} 
-      int mSetMarkerValue() const {return m_marker_value;}
+      void mSetIsNotKnown(bool not_known) {m_is_not_known = not_known;} 
+
+      bool mGetIsNotKnown() const {return m_is_not_known;} 
+      bool mGetMarkerBegin() const {return m_is_marker_begin;} 
+      bool mGetMarkerEnd() const {return m_is_marker_end;} 
+      bool mGetMarkerDep() const {return m_is_marker_dep;} 
+      int mGetMarkerValue() const {return m_marker_value;}
+      bool mGetMarker() const {return m_is_marker;} 
       
       // More dynamic, architecture-dependent information to be defined by derived classes
       virtual const char* getType() const = 0; // Make this class pure virtual

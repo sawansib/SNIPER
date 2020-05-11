@@ -99,6 +99,20 @@ private:
    void deptrace_roi_end();
    void deptrace_thread_create(HooksManager::ThreadCreate *args);
 
+   bool look_for_value = false;
+   bool DepValue[64];
+   void resetDepValue();
+   int FinalMarkerValue();
+   int marker_index = 0;
+   int final_DepValue = 0;
+   std::stringstream ss;
+   std::stringstream last_load;
+   bool last_load_pending = false;
+   std::stringstream load_leftover;
+   bool is_not_known = false;
+   bool next_load_marker = false;
+
+   
    static SInt64 __deptrace_roi_begin(UInt64 user, UInt64 arg) {reinterpret_cast<RobTimer*>(user)->deptrace_roi_begin(); return 0;}
    static SInt64 __deptrace_roi_end(UInt64 user, UInt64 arg) {reinterpret_cast<RobTimer*>(user)->deptrace_roi_end(); return 0;}
 
