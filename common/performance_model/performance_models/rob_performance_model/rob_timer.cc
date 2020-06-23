@@ -408,6 +408,15 @@ RobTimer::RobEntry *RobTimer::findEntryBySequenceNumber(UInt64 sequenceNumber)
   return entry;
 }
 
+bool RobTimer::IsOutOfRange(UInt64 sequenceNumber){
+  UInt64 first = rob[0].uop->getSequenceNumber();
+  UInt64 position = sequenceNumber - first;
+  if(position > rob.size())
+    return true;
+  else
+    return false;
+}
+
 void RobTimer::resetDepValue(){
   for (int i = 0; i < 64; i++)
     {
@@ -416,14 +425,13 @@ void RobTimer::resetDepValue(){
 }
 
 int RobTimer::FinalMarkerValue() {
-  //std::cout<<"Final cal "<<DepValue[0]<<marker_index<<"\n";
-      	std::stringstream ss;
-      	for (int i = 0; i < marker_index; ++i)
-      	  ss << DepValue[i];
-      	int result;
-      	ss >> result;
-      	return result;
-      }
+  std::stringstream ss;
+  for (int i = 0; i < xchg_dep_executed; ++i)
+    ss << DepValue[i];
+  int result = 0;
+  ss >> result;
+  return result;
+}
 
 long long RobTimer::getPCDiff(uint64_t pc1, uint64_t pc2)
 {
@@ -439,14 +447,170 @@ long long RobTimer::getPCDiff(uint64_t pc1, uint64_t pc2)
   return diff;
 }
 
+long long RobTimer::savePCdiff()
+{
+  DynamicMicroOp &dmo = *entry->uop;
+  auto new_pc = dmo.getMicroOp()->getInstruction()->getAddress();
+  long long diff = getPCDiff(new_pc, deptrace_last_pc);
+  deptrace_last_pc = new_pc; //the pc that we printed
+    return diff;
+}
+
 std::string RobTimer::getPCDiffAndUpdateLast()
 {
   DynamicMicroOp &dmo = *entry->uop;
   auto new_pc = dmo.getMicroOp()->getInstruction()->getAddress();
   long long diff = getPCDiff(new_pc, deptrace_last_pc);
+  deptrace_last_pc = new_pc; //the pc that we printed
+  return std::to_string(diff);
+}
+
+std::string RobTimer::getPCDiffAndUpdateLast_Marker()
+{
+  DynamicMicroOp &dmo = *entry->uop;
+  auto new_pc = dmo.getMicroOp()->getInstruction()->getAddress();
+  long long diff = getPCDiff(new_pc, deptrace_last_pc);
+  assert(marker_executed > 0);
+  assert(marker_size > 0);
+  diff = diff+newpcdiff;
   deptrace_last_pc = new_pc;
   return std::to_string(diff);
 }
+
+uint64_t RobTimer::getXCHGrdep(uint64_t rdep, uint64_t num_seq){
+  bool inloop = false;
+  uint64_t num_xchg_in_loop = 0;
+  uint64_t num_xchg = 0;
+  bool dep_on_xchg = false;
+  
+  for (int i = rdep; i > 0; i--){
+      RobEntry *depentry =  findEntryBySequenceNumber(num_seq - i);
+      if (depentry->uop->mGetMarker()) num_xchg++;
+  }
+  
+  RobEntry *depentry =  findEntryBySequenceNumber(num_seq - rdep); //check if the dependence falls on XCHG
+  if (depentry->uop->mGetMarker()) { 
+    dep_on_xchg = true;
+    inloop = true;
+    rdep += depentry->uop->mGetrdep();
+    while(inloop){
+      is_out_of_range = IsOutOfRange(num_seq - rdep);
+      if(!is_out_of_range) //give the else condition for this loop
+	{
+	  RobEntry *depentry =  findEntryBySequenceNumber(num_seq - rdep);
+	  if (depentry->uop->mGetMarker()
+	      && depentry->uop->mGetrdep() ){
+	    rdep += depentry->uop->mGetrdep();
+	  }
+	  else  //we leave adding the dependencies when rdep comes 0 or next pointed is not XCHG
+	    break;
+	}
+      else
+	break;
+    }
+    
+    for (int i = rdep; i > 0; i--){
+      bool tmp = IsOutOfRange(num_seq - i);
+      if(!tmp)
+	{
+	  RobEntry *depentry =  findEntryBySequenceNumber(num_seq - i);
+	  if (depentry->uop->mGetMarker()) num_xchg_in_loop++;
+	}
+    }
+  }
+  if(dep_on_xchg)
+    return rdep - num_xchg_in_loop;
+  else
+    return rdep - num_xchg;
+}
+
+uint64_t RobTimer::getXCHGmdep(uint64_t mdep, uint64_t num_seq){
+  bool inloop = false;
+  uint64_t num_xchg_in_loop = 0;
+  uint64_t num_xchg = 0;
+  bool dep_on_xchg = false;
+
+  for (int i = mdep; i > 0; i--){
+    RobEntry *depentry =  findEntryBySequenceNumber(num_seq - i);
+    if (depentry->uop->mGetMarker()) num_xchg++;
+  }
+  RobEntry *depentry =  findEntryBySequenceNumber(num_seq - mdep); //check if the dependence falls on XCHG
+  if (depentry->uop->mGetMarker()) {
+    dep_on_xchg = true;
+    inloop = true;
+    mdep += depentry->uop->mGetmdep();
+    while(inloop){
+      is_out_of_range = IsOutOfRange(num_seq - mdep);
+      if(!is_out_of_range)
+	{
+	  RobEntry *depentry =  findEntryBySequenceNumber(num_seq - mdep);
+	  if (depentry->uop->mGetMarker()
+	      && depentry->uop->mGetmdep()){
+	    mdep += depentry->uop->mGetmdep();
+	  }
+	  else
+	    break;
+	}
+       else
+	 break;
+    }
+    for (int i = mdep; i > 0; i--){
+      bool tmp = IsOutOfRange(num_seq - i);
+      if(!tmp){
+      RobEntry *depentry =  findEntryBySequenceNumber(num_seq - i);
+      if (depentry->uop->mGetMarker()) num_xchg_in_loop++;
+      }
+    }
+  }
+  if(dep_on_xchg)
+    return mdep - num_xchg_in_loop;
+  else
+    return mdep - num_xchg;
+}
+
+uint64_t RobTimer::getXCHGadep(uint64_t adep, uint64_t num_seq){
+  bool inloop = true;
+  uint64_t num_xchg_in_loop = 0;
+  uint64_t num_xchg = 0;
+  bool dep_on_xchg = false;
+  for (int i = adep; i > 0; i--){
+    RobEntry *depentry =  findEntryBySequenceNumber(num_seq - i);
+    if (depentry->uop->mGetMarker()) num_xchg++;
+  }
+  RobEntry *depentry =  findEntryBySequenceNumber(num_seq - adep); //check if the dependence falls on XCHG
+  if (depentry->uop->mGetMarker()) {
+    dep_on_xchg = true;
+    inloop = true;
+    adep += depentry->uop->mGetadep();
+    while(inloop){
+      is_out_of_range = IsOutOfRange(num_seq - adep);
+      if(!is_out_of_range)
+	{
+	  RobEntry *depentry =  findEntryBySequenceNumber(num_seq - adep);
+	  if (depentry->uop->mGetMarker()
+	      && depentry->uop->mGetadep() ){
+	    adep += depentry->uop->mGetadep();
+	  }
+	  else
+	    break;
+       }
+       else
+	 break;
+    }
+    for (int i = adep; i > 0; i--){
+      bool tmp = IsOutOfRange(num_seq - i);
+      if(!tmp){
+	RobEntry *depentry =  findEntryBySequenceNumber(num_seq - i);
+      if (depentry->uop->mGetMarker()) num_xchg_in_loop++;
+      }
+    }
+  }
+  if(dep_on_xchg)
+    return adep - num_xchg_in_loop;
+  else
+   return adep - num_xchg;
+}
+
 
 boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<DynamicMicroOp*>& insts)
 {
@@ -539,27 +703,28 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
       size_t num_reg_dep = entry->uop->getDependenciesLength();
       // Save all of our dependencies, no matter which micro-op we are
       for (size_t i = 0 ; i < entry->uop->getDependenciesLength() ; ++i)
-      {
-	uint64_t d = entry->uop->getDependency(i);
-	uint64_t in = deptrace_microops ? entry->uop->getSequenceNumber() : entry->uop->getInstructionNumber();
-	RobEntry *depentry = findEntryBySequenceNumber(d);
-	assert(depentry);
-	// microop? Yes, then grab the SeqNum, otherwise, the InsnNum
-	uint64_t din = deptrace_microops ? depentry->uop->getSequenceNumber() : depentry->uop->getInstructionNumber();
-	if (in != din)
 	{
-	  if (i < num_reg_dep) {
-	    // Only add the register dependency if we don't find the addr-gen dep
-	    if (deptrace_addr_deps.count(in-din) == 0) {
-	      deptrace_reg_deps.insert(in-din);
+	  uint64_t d = entry->uop->getDependency(i);
+	  uint64_t in = deptrace_microops ? entry->uop->getSequenceNumber() : entry->uop->getInstructionNumber();
+	  RobEntry *depentry = findEntryBySequenceNumber(d);
+	  assert(depentry);
+	  // microop? Yes, then grab the SeqNum, otherwise, the InsnNum
+	  uint64_t din = deptrace_microops ? depentry->uop->getSequenceNumber() : depentry->uop->getInstructionNumber();
+	  if (in != din)
+	    {
+	      if (i < num_reg_dep) {
+		// Only add the register dependency if we don't find the addr-gen dep
+		if (deptrace_addr_deps.count(in-din) == 0) {
+		  deptrace_reg_deps.insert(in-din);
+		}
+	      } else {
+		deptrace_mem_deps.insert(in-din);
+	      }
 	    }
-	  } else {
-	    deptrace_mem_deps.insert(in-din);
-	  }
 	}
-      }
+      if (entry->getNumAddressProducers() == 0)
+	entry->addressReady = entry->addressReadyMax;
     }
-
     this->memoryDependencies->setDependencies(*entry->uop, lowestValidSequenceNumber);
 
     /* Trace format:
@@ -617,30 +782,73 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    deptrace_last_was_newline = false;
 	  else
 	   deptrace_f << " ";
-	  if (dmo.getMicroOp()->getInstruction()->isAtomic()) 
-	    deptrace_f << "LA" << getPCDiffAndUpdateLast(); // Load uop (part of an atomic instruction)
-	  else
-	    deptrace_f << "L" << getPCDiffAndUpdateLast();
-	                 
-#if DEBUG_DEPTRACE >= 1
-	  deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
-#endif
-	  for (auto rdep : deptrace_reg_deps)
-	  {
-	    deptrace_f << "d" << rdep;
-	  }
-	  for (auto mdep : deptrace_mem_deps)
-	  {
-	    deptrace_f << "m" << mdep;
-	  }
-
 	  if(next_load_marker){
-	    assert(last_load_pending == true);
-	    if(is_not_known)
-	      deptrace_f <<"n";
+	    if (dmo.getMicroOp()->getInstruction()->isAtomic()) //change bewlow 
+	      deptrace_f << "LA" << getPCDiffAndUpdateLast_Marker(); // Load uop (part of an atomic instruction)
 	    else
-	      deptrace_f <<"s"<<final_DepValue;
+	      deptrace_f << "L" << getPCDiffAndUpdateLast_Marker();
+	    
+#if DEBUG_DEPTRACE >= 1
+	    deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
+#endif
+	    for (auto rdep : deptrace_reg_deps) //change below
+	      {
+		uint64_t tmp = this->getXCHGrdep(rdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "d" << tmp;
+		//deptrace_f << "d" << rdep;
+	      }
+ 	    for (auto mdep : deptrace_mem_deps)
+	      {
+		uint64_t tmp = this->getXCHGmdep(mdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "m" << tmp;
+		// deptrace_f << "m" << mdep;
+	      }
+	    assert(last_load_pending == true);
+	    if(!is_not_known_must && !is_not_known_may){ //both known
+	      deptrace_f <<"s"<<final_DepValue_may;
+	      deptrace_f <<"f"<<final_DepValue_must;
+	    }
+	    
+	    else if(!is_not_known_must && is_not_known_may){ //only may alias is not known
+	      deptrace_f <<"s99999";
+	    }
+	    
+	    else if(is_not_known_must && !is_not_known_may){ //only must alias is not known
+	      deptrace_f <<"f99999";
+	    }
+	    else if(is_not_known_must && is_not_known_may){ //both are not known
+	      deptrace_f <<"s99999";
+	      deptrace_f <<"f99999";
+	    }
+	    else
+	      assert(false);
+	    
+	    final_DepValue_must = 0;
+	    final_DepValue_may = 0;
 	  }
+	  else {
+	    if (dmo.getMicroOp()->getInstruction()->isAtomic()) 
+	      deptrace_f << "LA" << getPCDiffAndUpdateLast(); // Load uop (part of an atomic instruction)
+	    else
+	      deptrace_f << "L" << getPCDiffAndUpdateLast();
+	    
+#if DEBUG_DEPTRACE >= 1
+	    deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
+#endif
+	    for (auto rdep : deptrace_reg_deps)
+	      {
+		uint64_t tmp = this->getXCHGrdep(rdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "d" << tmp;
+		//deptrace_f << "d" << rdep;
+	      }
+	    for (auto mdep : deptrace_mem_deps)
+	      {
+		uint64_t tmp = this->getXCHGmdep(mdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "m" << tmp;
+		// deptrace_f << "m" << mdep;
+	      }
+	  }
+	  
 	  assert(deptrace_addr_deps.size() == 0);
 	  deptrace_f << " " << std::hex << deptrace_load_addr << std::dec;
 	  deptrace_f << " " << deptrace_load_size << "\n";
@@ -648,70 +856,82 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  deptrace_last_was_newline = true;
 	  next_load_marker = false;
 	  last_load_pending = false;
-		  
+	  last_was_marker = false;
+	  marker_executed = 0;
+	  newpcdiff = 0; //change this one as well
+	  is_not_known_must = 0;
+	  is_not_known_may = 0;
 	}
-          
 	if (deptrace_is_store)
-	{
-	  if (deptrace_last_was_newline)
+	  {
+	    if (deptrace_last_was_newline)
 	    deptrace_last_was_newline = false;
-	  else
-	    deptrace_f << " ";
-	  if (dmo.getMicroOp()->getInstruction()->isAtomic()) 
-	    deptrace_f << "SA" << getPCDiffAndUpdateLast(); // Store uop (part of an atomic instruction)
-	  else
-	    deptrace_f << "S" << getPCDiffAndUpdateLast();
-
+	    else
+	      deptrace_f << " ";
+	    if (dmo.getMicroOp()->getInstruction()->isAtomic()) 
+	      deptrace_f << "SA" << getPCDiffAndUpdateLast(); // Store uop (part of an atomic instruction)
+	    else
+	      deptrace_f << "S" << getPCDiffAndUpdateLast();
+	    
 #if DEBUG_DEPTRACE >= 1
-	  deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
+	    deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
 #endif
-	  for (auto rdep : deptrace_reg_deps)
-	  {
-	    deptrace_f << "d" << rdep;
+	    for (auto rdep : deptrace_reg_deps)
+	      {
+		uint64_t tmp = this->getXCHGrdep(rdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "d" << tmp;
+		// deptrace_f << "d" << rdep;
+	      }
+	    for (auto mdep : deptrace_mem_deps)
+	      {
+		uint64_t tmp = this->getXCHGmdep(mdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "m" << tmp;
+		// deptrace_f << "m" << mdep;
+	      }
+	    for (auto adep : deptrace_addr_deps)
+	      {
+		uint64_t tmp = this->getXCHGadep(adep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "a" << tmp;
+		// deptrace_f << "a" << adep;
+	      }
+	    deptrace_f << " " << std::hex << deptrace_store_addr << std::dec;
+	    deptrace_f << " " << deptrace_store_size << "\n";
+	    deptrace_store_addr = 0x0;
+	    deptrace_last_was_newline = true;
+	    
 	  }
-	  for (auto mdep : deptrace_mem_deps)
-	  {
-	    deptrace_f << "m" << mdep;
-	  }
-	  for (auto adep : deptrace_addr_deps)
-	  {
-	    deptrace_f << "a" << adep;
-	  }
-	  deptrace_f << " " << std::hex << deptrace_store_addr << std::dec;
-	  deptrace_f << " " << deptrace_store_size << "\n";
-	  deptrace_store_addr = 0x0;
-	  deptrace_last_was_newline = true;
-	  
-	}
-
+	
 	if (deptrace_is_branch)
-	{
-	  if (deptrace_last_was_newline)
-	    deptrace_last_was_newline = false;
-	  else
-	    deptrace_f << " ";
-	  assert(!(dmo.getMicroOp()->getInstruction()->isAtomic()));
-	  deptrace_f << "B" << getPCDiffAndUpdateLast();
-
+	  {
+	    if (deptrace_last_was_newline)
+	      deptrace_last_was_newline = false;
+	    else
+	      deptrace_f << " ";
+	    assert(!(dmo.getMicroOp()->getInstruction()->isAtomic()));
+	    deptrace_f << "B" << getPCDiffAndUpdateLast();
+	    
 #if DEBUG_DEPTRACE >= 1
-	  deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
+	    deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
 #endif
-	  for (auto rdep : deptrace_reg_deps)
-	  {
-	    deptrace_f << "d" << rdep;
+	    for (auto rdep : deptrace_reg_deps)
+	      {
+		uint64_t tmp = this->getXCHGrdep(rdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "d" << tmp;
+		//deptrace_f << "d" << rdep;
 	  }
-	  for (auto mdep : deptrace_mem_deps)
-	  {
-	    deptrace_f << "m" << mdep;
+	    for (auto mdep : deptrace_mem_deps)
+	      {
+		uint64_t tmp = this->getXCHGmdep(mdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "m" << tmp;
+		// deptrace_f << "m" << mdep;
+	      }
+	    assert(deptrace_addr_deps.size() == 0);
+	    // No newlines for branches
+	    
+	    deptrace_f << "t" << getPCDiff(dmo.getBranchTarget(), deptrace_last_pc);
+	    if (dmo.isBranchTaken()) 
+	      deptrace_f << "*";
 	  }
-	  assert(deptrace_addr_deps.size() == 0);
-	  // No newlines for branches
-       
-	  deptrace_f << "t" << getPCDiff(dmo.getBranchTarget(), deptrace_last_pc);
-	  if (dmo.isBranchTaken()) {
-	    deptrace_f << "*";
-	  }
-	}
 	
 	// For non-branch, non load, non-store instructions
 	if (!deptrace_is_branch && !deptrace_is_load && !deptrace_is_store)
@@ -730,28 +950,82 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  }
 	  
 	  if(dmo.mGetMarker()){
+	   
+	    deptrace_last_was_newline = true;
+	    total_marker_executed++;
+	    marker_executed++;
+	    newpcdiff += savePCdiff();
 	    if (dmo.mGetMarkerBegin()){
-	      assert(last_load_pending == false);
-	      assert(look_for_value == false);
+	      //deptrace_f << "XCHG_RDI"<<" "<<getPCDiffAndUpdateLast(); 
+	      for(int i = 0; i<64; i++) xchg_dep_rdep[i]=0;
+	      xchg_dep_executed = 0;
+	      last_was_marker = true;
+	      marker_begin_size = dmo.getMicroOp()->getInstruction()->getAddress();
 	      ss.str(""); //reset for new value
-	      final_DepValue = 0;
 	      look_for_value = true; //begin looking for values
 	    }
 	   
-	    if (dmo.mGetMarkerEnd()){
+	    if ((dmo.mGetMarkerEnd() && look_for_value) ||
+		(dmo.mGetMarkerEnd() && look_for_loop_id_begin) ||
+		(dmo.mGetMarkerEnd() && look_for_loop_id_end)){
+	      // deptrace_f << "XCHG_RCX"<<" "<<getPCDiffAndUpdateLast();
+	      if (look_for_value){
+		if(last_was_may)
+		  final_DepValue_may = this->FinalMarkerValue();
+		else 
+		  final_DepValue_must = this->FinalMarkerValue();
+		
+		if(last_was_may)
+		  last_was_may = false;
+		else
+		  last_was_may = true;
+	      }
+	      
+	      if(look_for_loop_id_begin || look_for_loop_id_end){
+		loop_id = this->FinalMarkerValue();
+		if(look_for_loop_id_begin) deptrace_f<<"BEGIN_LOOP "<<loop_id<<" ";
+		if(look_for_loop_id_end)   deptrace_f<<"END_LOOP "<<loop_id<<" ";
+		    }
+	      assert(xchg_dep_executed > 0);
 	      look_for_value = false; //stop looking for value
 	      last_load_pending = true;
 	      next_load_marker = true;
+	      look_for_loop_id_begin = false;
+	      look_for_loop_id_end = false;
+	      loop_id = 0;		      
 	    }
 
-	    if (dmo.mGetIsNotKnown()){
-	      assert(is_not_known == false);
-	      is_not_known = true;
+	    if (dmo.mGetIsNotKnown() && look_for_value){
+	      // deptrace_f << "XCHG_RBX"<<" "<<getPCDiffAndUpdateLast(); 
+	      if(last_was_may)
+		is_not_known_may = true;
+	      else
+		is_not_known_must = true;
+	      xchg_dep_executed++;
 	    }
 
-	    if (look_for_value && dmo.mGetMarkerDep()){
-	      ss << dmo.mGetMarkerValue(); //save value
-	      ss >> final_DepValue;
+	    if ((dmo.mGetMarkerDep() && look_for_value)
+		|| (dmo.mGetMarkerDep() && look_for_loop_id_begin)
+		|| (dmo.mGetMarkerDep() && look_for_loop_id_end)){
+	      // deptrace_f << "XCHG_R" <<dmo.mGetMarkerValue()<<" "<<getPCDiffAndUpdateLast(); 
+	      marker_dep_size = dmo.getMicroOp()->getInstruction()->getAddress();
+	      marker_size =  marker_dep_size - marker_begin_size;
+	      assert(marker_size > 0);
+	      DepValue[xchg_dep_executed] =  dmo.mGetMarkerValue(); //save value
+	      xchg_dep_executed++;
+	    }
+	    
+	    if (dmo.mGetMarkerBeginLoop()){
+	       xchg_dep_executed = 0;
+	      look_for_loop_id_begin = true;
+	      // deptrace_f << "XCHG_RSI"<<" "<<getPCDiffAndUpdateLast();
+	      //std::cout<<"BEGIN_LOOP\n";
+	    }
+	    if (dmo.mGetMarkerEndLoop()){
+	       xchg_dep_executed = 0;
+	      look_for_loop_id_end = true;
+	      //deptrace_f << "XCHG_RDX"<<" "<<getPCDiffAndUpdateLast();
+	      //std::cout<<"END_LOOP\n";
 	    }
 	  }
 	  
@@ -764,23 +1038,52 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  } else if (dmo.getMicroOp()->getSubtype() == MicroOp::UOP_SUBTYPE_FP_SQRT) { 
 	    deptrace_f << "Q";
 	  } // else deptrace_f << "i";
-	  deptrace_f << getPCDiffAndUpdateLast();
+	  if(!dmo.mGetMarker())deptrace_f << getPCDiffAndUpdateLast();
                
 #if DEBUG_DEPTRACE >= 1
 	  deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
 #endif
 	  for (auto rdep : deptrace_reg_deps)
-	  {
-	    deptrace_f << "d" << rdep;
-	  }
+	    {
+	      if(dmo.mGetMarker()){
+		//deptrace_f << "d" << rdep << " ";
+		dmo.mSetrdep(rdep);
+	      }
+	      else{
+		uint64_t tmp = this->getXCHGrdep(rdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "d" << tmp;
+		//deptrace_f << "d" << rdep;
+	      }
+	    }
 	  for (auto mdep : deptrace_mem_deps)
-	  {
-	    deptrace_f << "m" << mdep;
-	  }
+	    {
+	      if(dmo.mGetMarker()){
+		//deptrace_f << "m" << mdep << " ";
+		dmo.mSetmdep(mdep);
+	      }
+	      else{
+		uint64_t tmp = this->getXCHGmdep(mdep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "m" << tmp;
+		//deptrace_f << "m" << mdep;
+	      }
+	    }
+	  for (auto adep : deptrace_addr_deps)
+	    {
+	      if(dmo.mGetMarker()){
+		//deptrace_f << "a" << adep << " ";
+		dmo.mSetadep(adep);
+	      }
+	      else{
+		uint64_t tmp = this->getXCHGadep(adep,dmo.getSequenceNumber());
+		if(!is_out_of_range)deptrace_f << "a" << tmp;
+		//deptrace_f << "a" << adep;
+	      }
+	    }
+	  
 	  assert(deptrace_addr_deps.size() == 0);
 	  // No newlines for instructions with dependencies
 	}
-      }
+      }	
 
       // Clear per-instruction data structures
       deptrace_is_branch = false;
@@ -801,7 +1104,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
       auto current_cmd = (*it)->getMicroOp()->trace_data[0];
 
       //deptrace_f << " SPECIAL " << current_cmd << " ";
-      std::cout << current_cmd <<" "<<thread_id<<" "<<deptraceRMSIsActive(thread_id)<<sync_instr_pending<<"\n";
+      //std::cout << current_cmd <<" "<<thread_id<<" "<<deptraceRMSIsActive(thread_id)<<sync_instr_pending<<"\n";
       switch (current_cmd)
       {
 
@@ -1260,7 +1563,6 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 
   return boost::tuple<uint64_t,SubsecondTime>(totalInsnExec, totalLat);
 }
-
 void RobTimer::synchronize(SubsecondTime time)
 {
   // NOTE: depending on how far we jumped ahead (usually a considerable amount),

@@ -41,6 +41,10 @@ class DynamicMicroOp
       /** This array contains the dependencies. The uint64_t stored in the array is the sequenceNumber of the dependency. */
       uint64_t dependencies[MAXIMUM_NUMBER_OF_DEPENDENCIES];
 
+      uint32_t real_dep_length;
+      uint64_t real_dependencies_index[MAXIMUM_NUMBER_OF_DEPENDENCIES];
+      
+
       /** The latency of the instruction. */
       uint32_t execLatency;
 
@@ -72,6 +76,11 @@ class DynamicMicroOp
       bool m_is_marker_dep = false; //tells if marker xchg is dep then save the value
       int m_marker_value= 0; //tells the marker value (only set for marker dep xchg's)
       bool m_is_not_known = false;
+      uint64_t m_rdep = 0;
+      uint64_t m_mdep = 0;
+      uint64_t m_adep;
+      bool m_is_marker_begin_loop = false;
+      bool m_is_marker_end_loop = false;
       // architecture-specific information to be defined in derived classes
 
 
@@ -107,7 +116,12 @@ class DynamicMicroOp
 
       uint32_t getIntraInstrDependenciesLength() const { return this->intraInstructionDependencies; }
       void setIntraInstrDependenciesLength(uint32_t deps) { intraInstructionDependencies = deps;}
+      
+      void setRealDepLength(uint32_t dep_length){real_dep_length = dep_length;}
+      uint32_t getRealDepLength() const {return real_dep_length;}
 
+      
+      
       uint32_t getMicroOpTypeOffset() const { return microOpTypeOffset; }
       void setMicroOpTypeOffset(uint32_t offset) { microOpTypeOffset = offset; }
 
@@ -166,14 +180,24 @@ class DynamicMicroOp
       void mSetMarkerEnd(bool mark_end) {m_is_marker_end = mark_end;} 
       void mSetMarkerDep(bool dep) {m_is_marker_dep = dep;} 
       void mSetMarkerValue(int value) {m_marker_value = value;}
-      void mSetIsNotKnown(bool not_known) {m_is_not_known = not_known;} 
+      void mSetIsNotKnown(bool not_known) {m_is_not_known = not_known;}
+      void mSetrdep(uint64_t rdep){m_rdep = rdep;}
+      void mSetmdep(uint64_t mdep){m_mdep = mdep;}
+      void mSetadep(uint64_t adep){m_adep = adep;}
+      void mSetMarkerBeginLoop(bool marker){m_is_marker_begin_loop = marker;}
+      void mSetMarkerEndLoop(bool marker){m_is_marker_end_loop = marker;}
 
+      uint64_t mGetrdep() const {return m_rdep;}
+      uint64_t mGetmdep() const {return m_mdep;}
+      uint64_t mGetadep() const {return m_adep;}
       bool mGetIsNotKnown() const {return m_is_not_known;} 
       bool mGetMarkerBegin() const {return m_is_marker_begin;} 
       bool mGetMarkerEnd() const {return m_is_marker_end;} 
       bool mGetMarkerDep() const {return m_is_marker_dep;} 
       int mGetMarkerValue() const {return m_marker_value;}
-      bool mGetMarker() const {return m_is_marker;} 
+      bool mGetMarker() const {return m_is_marker;}
+      bool mGetMarkerBeginLoop() const {return m_is_marker_begin_loop;}
+      bool mGetMarkerEndLoop() const {return m_is_marker_end_loop;}
       
       // More dynamic, architecture-dependent information to be defined by derived classes
       virtual const char* getType() const = 0; // Make this class pure virtual

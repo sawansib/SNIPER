@@ -98,19 +98,46 @@ private:
    void deptrace_roi_begin();
    void deptrace_roi_end();
    void deptrace_thread_create(HooksManager::ThreadCreate *args);
+   uint64_t getXCHGrdep(uint64_t rdep, uint64_t num_seq);
+   uint64_t getXCHGmdep(uint64_t mdep, uint64_t num_seq);
+   uint64_t getXCHGadep(uint64_t adep, uint64_t num_seq);
 
+   uint64_t loop_id = 0;
+   bool look_for_loop_id_begin = false;
+   bool look_for_loop_id_end = false;
    bool look_for_value = false;
-   bool DepValue[64];
+   int DepValue[64];
    void resetDepValue();
    int FinalMarkerValue();
    int marker_index = 0;
-   int final_DepValue = 0;
+   int final_DepValue_must = 0;
+   int final_DepValue_may = 0;
+   bool last_was_may = true;
    std::stringstream ss;
    std::stringstream last_load;
    bool last_load_pending = false;
    std::stringstream load_leftover;
-   bool is_not_known = false;
+   bool is_not_known_must = false;
+   bool is_not_known_may = false;
    bool next_load_marker = false;
+   int marker_executed = 0;
+   int total_marker_executed = 0;
+   uint64_t marker_dep_size = 0;
+   uint64_t marker_begin_size = 0;
+   uint64_t marker_size = 0;
+   bool last_was_marker = 0;
+   uint64_t real_rdep = 0;
+   uint64_t real_mdep = 0;
+   uint64_t xchg_rdep = 0;
+   uint64_t xchg_mdep = 0;
+   uint64_t xchg_adep = 0;
+   bool is_out_of_range = false;
+
+   uint64_t xchg_begin_rdep = 0;
+   uint64_t xchg_end_rdep = 0;
+   uint64_t xchg_dep_rdep[64];
+   uint64_t xchg_dep_executed = 0;
+   uint64_t newpcdiff = 0;
 
    
    static SInt64 __deptrace_roi_begin(UInt64 user, UInt64 arg) {reinterpret_cast<RobTimer*>(user)->deptrace_roi_begin(); return 0;}
@@ -202,6 +229,8 @@ private:
    std::vector<SubsecondTime> m_outstandingLoadsAll;
 
    RobEntry *findEntryBySequenceNumber(UInt64 sequenceNumber);
+   bool IsOutOfRange(UInt64 sequenceNumber);
+   
    SubsecondTime* findCpiComponent();
    void countOutstandingMemop(SubsecondTime time);
    void printRob();
@@ -214,7 +243,10 @@ private:
    void issueInstruction(uint64_t idx, SubsecondTime &next_event);
 
    long long getPCDiff(uint64_t pc1, uint64_t pc2);
+   long long savePCdiff();
+   
    std::string getPCDiffAndUpdateLast();
+   std::string getPCDiffAndUpdateLast_Marker();
 
    bool deptraceAnyActive();
    bool deptraceIsActive(thread_id_t thread_id);

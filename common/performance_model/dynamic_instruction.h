@@ -28,6 +28,8 @@ class DynamicInstruction
 	 is_marker_dep = false; //tells if marker xchg is dep then save the value
 	 marker_value = 0; //tells the marker value (only set for marker dep xchg's)
 	 is_not_known = false;
+	 is_marker_begin_loop = false;
+	 is_marker_end_loop = false;
       }
    public:
       struct BranchInfo
@@ -63,6 +65,8 @@ class DynamicInstruction
       bool is_marker_dep; //tells if marker xchg is dep then save the value
       int marker_value; //tells the marker value (only set for marker dep xchg's)
       bool is_not_known;
+      bool is_marker_begin_loop;
+      bool is_marker_end_loop;
       static Allocator* createAllocator();
 
       ~DynamicInstruction();
@@ -114,32 +118,19 @@ class DynamicInstruction
        void SetMarkerValue(int value){marker_value = value;}
        void setMarkerDep(bool dep){is_marker_dep = dep;}
        void setNotKnown() {is_not_known = true;}
+       void setMarkerBeginLoop() {is_marker_begin_loop = true;}
+       void setMarkerEndLoop() {is_marker_end_loop = true;}
+ 
 
        bool getNotKnown() const {return is_not_known;}
        bool getStartMarker() const {return is_marker_begin;}
        bool getEndMarker() const {return is_marker_end;}
        int getMarkerValue() const {return marker_value;}
        bool getMarkerDep() const {return is_marker_dep;}
-      /* void resetMarkerValue(){ */
-      /* 	for (int i = 0; i < 264; i++) */
-      /* 	{ */
-      /* 	  marker_value[i] = 0; */
-      /* 	} */
-      /* } */
-      /* int FinalMarkerValue() { */
-      /* 	std::cout<<"Final cal "<<marker_value[0]<<marker_index<<"\n"; */
-      /* 	std::stringstream ss; */
-      /* 	for (int i = 0; i < marker_index; ++i) */
-      /* 	  ss << marker_value[i]; */
-      /* 	int result; */
-      /* 	ss >> result; */
-      /* 	return result; */
-      /* } */
-      /* int GetFinalMarkerValue() { */
-      /* 	return final_marker_value; */
-      /*   } */
-
-      SubsecondTime getBranchCost(Core *core, bool *p_is_mispredict = NULL);
+       bool getMarkerBeginLoop() const {return is_marker_begin_loop;}
+       bool getMarkerEndLoop() const {return is_marker_end_loop;}
+ 
+       SubsecondTime getBranchCost(Core *core, bool *p_is_mispredict = NULL);
       void accessMemory(Core *core);
 };
 
