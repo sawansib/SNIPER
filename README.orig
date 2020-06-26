@@ -1,0 +1,29 @@
+This is the source code for the Sniper multicore simulator developed
+by the Performance Lab research group at Ghent University, Belgium.
+Please refer to the NOTICE file in the top level directory for 
+licensing and copyright information.
+
+For the latest version of the software or additional information, please
+see our website:
+
+http://snipersim.org
+
+If you are using Sniper, please let us know by posting a message on
+our user forum.  If you use Sniper in your research please
+acknowledge us by referencing our SuperComputing 2011 paper:
+
+Trevor E. Carlson, Wim Heirman, Lieven Eeckhout, "Sniper: Exploring
+the Level of Abstraction for Scalable and Accurate Parallel Multi-Core
+Simulation". Proceedings of the International Conference for High
+Performance Computing, Networking, Storage and Analysis (SC). 2011.
+<<<<<<< HEAD
+=======
+
+
+make CC=gcc-4.8 CXX=g++-4.8
+
+Running with trace generation without RMS 
+
+./run-sniper -n 1 -cgainestown -crob -gperf_model/dram/num_controllers=1 -gperf_model/l3_cache/shared_cores=1 -gperf_model/l2_cache/perfect=true -gperf_model/l3_cache/perfect=true -gperf_model/l1_icache/perfect=true  -gperf_model/dram/direct_access=true -ggeneral/enable_icache_modeling=false -gperf_model/branch_predictor/type=none -gperf_model/l1_dcache/perfect=true -gclock_skew_minimization/barrier/quantum=2147483647 -gperf_model/dtlb/size=0 -gperf_model/core/interval_timer/window_size=1024 -gperf_model/core/rob_timer/rs_entries=1024 -gperf_model/core/rob_timer/outstanding_loads=1024 -gperf_model/core/rob_timer/outstanding_stores=1024 -gperf_model/core/rob_timer/commit_width=4 -gperf_model/core/rob_timer/deptrace=true -gperf_model/core/rob_timer/store_to_load_forwarding=false -gperf_model/core/rob_timer/deptrace_microops=true -gperf_model/core/rob_timer/deptrace_start_active=true -gperf_model/core/rob_timer/deptrace_roi=true --no-cache-warmin --save-output -d /media/sawan/files/parsec_xdrf/ -- /media/sawan/files/sniper/a.out
+
+>>>>>>> verified output for SMDA compiler
