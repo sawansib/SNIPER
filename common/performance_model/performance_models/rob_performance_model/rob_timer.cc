@@ -949,8 +949,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	      deptrace_f << "END_iNDRF " << 0 - dmo.getRegValue() << " ";
 	  }
 	  
-	  if(dmo.mGetMarker()){
-	   
+	  if(dmo.mGetMarker()){	   
 	    deptrace_last_was_newline = true;
 	    total_marker_executed++;
 	    marker_executed++;
@@ -979,13 +978,15 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 		  last_was_may = false;
 		else
 		  last_was_may = true;
+		//std::cout << "May" << final_DepValue_may << " MUST" << final_DepValue_must << "\n";
 	      }
 	      
 	      if(look_for_loop_id_begin || look_for_loop_id_end){
 		loop_id = this->FinalMarkerValue();
 		if(look_for_loop_id_begin) deptrace_f<<"BEGIN_LOOP "<<loop_id<<" ";
 		if(look_for_loop_id_end)   deptrace_f<<"END_LOOP "<<loop_id<<" ";
-		    }
+	      }
+	      std::cout<< "DEP :: instart" << xchg_dep_executed << "\n";
 	      assert(xchg_dep_executed > 0);
 	      look_for_value = false; //stop looking for value
 	      last_load_pending = true;
@@ -996,23 +997,26 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    }
 
 	    if (dmo.mGetIsNotKnown() && look_for_value){
-	      // deptrace_f << "XCHG_RBX"<<" "<<getPCDiffAndUpdateLast(); 
+	      xchg_dep_executed++;
+	      std::cout<< "DEP notknown:: " << xchg_dep_executed << "\n";
+	      //deptrace_f << "XCHG_RBX"<<" "<<getPCDiffAndUpdateLast(); 
 	      if(last_was_may)
 		is_not_known_may = true;
 	      else
 		is_not_known_must = true;
-	      xchg_dep_executed++;
 	    }
 
 	    if ((dmo.mGetMarkerDep() && look_for_value)
 		|| (dmo.mGetMarkerDep() && look_for_loop_id_begin)
 		|| (dmo.mGetMarkerDep() && look_for_loop_id_end)){
-	      // deptrace_f << "XCHG_R" <<dmo.mGetMarkerValue()<<" "<<getPCDiffAndUpdateLast(); 
+	      //deptrace_f << "XCHG_R" <<dmo.mGetMarkerValue()<<" "<<getPCDiffAndUpdateLast(); 
 	      marker_dep_size = dmo.getMicroOp()->getInstruction()->getAddress();
 	      marker_size =  marker_dep_size - marker_begin_size;
 	      assert(marker_size > 0);
 	      DepValue[xchg_dep_executed] =  dmo.mGetMarkerValue(); //save value
 	      xchg_dep_executed++;
+	      std::cout<< "DEP know:: " << xchg_dep_executed << "\n";
+		      
 	    }
 	    
 	    if (dmo.mGetMarkerBeginLoop()){

@@ -7,6 +7,12 @@ void pinboost_assert_fail(const char *__assertion, const char *__file,
 
 #define __PINBOOST_ASSERT_VOID_CAST (void)
 
+//#if defined __cplusplus
+//#   define __ASSERT_FUNCTION    __PRETTY_FUNCTION__
+//# else
+//#   define __ASSERT_FUNCTION    __func__
+//#endif
+
 # define pinboost_assert(expr)                                                   \
   ((expr)                                                                        \
    ? __PINBOOST_ASSERT_VOID_CAST (0)                                             \

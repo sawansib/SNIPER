@@ -69,8 +69,7 @@ void routineStartCallback(RTN rtn, INS ins)
 
 VOID sendTraceInsn(THREADID id, ADDRINT type, ADDRINT arg0, ADDRINT arg1, ADDRINT arg2)
 {
-   //std::cerr << __FUNCTION__ << " called! type=" << type << "\n";
-
+  //std::cerr << __FUNCTION__ << " called! type=" << type << "\n";
    OperandList list;
    Instruction *inst = new GenericInstruction(list);
    inst->setAddress(0xffffffffffffffff);
@@ -95,7 +94,6 @@ VOID sendTraceInsn(THREADID id, ADDRINT type, ADDRINT arg0, ADDRINT arg1, ADDRIN
 VOID RoutineTraceGen(RTN rtn, VOID *v) {
 
   //std::cerr << __FUNCTION__ << " called!\n";
-
   string name = RTN_Name(rtn);
   //cerr << name << endl;
   RTN_Open(rtn);

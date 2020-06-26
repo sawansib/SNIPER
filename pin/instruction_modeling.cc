@@ -108,6 +108,7 @@ static void handleXchgRCX(const CONTEXT *ctxt, THREADID thread_id) {
 
 static void handleXchgRBX(const CONTEXT *ctxt, THREADID thread_id) {
   localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setNotKnown();
  }
 
 static void handleXchgDep0(const CONTEXT *ctxt, THREADID thread_id) {
@@ -155,6 +156,18 @@ static void handleXchgDep7(const CONTEXT *ctxt, THREADID thread_id) {
   localStore[thread_id].dynins->setMarker(true);
   localStore[thread_id].dynins->setMarkerDep(true);
   localStore[thread_id].dynins->SetMarkerValue(7);
+}
+
+static void handleXchgBeginLoop(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerBeginLoop();
+  // cerr << "called\n";
+}
+
+static void handleXchgEndLoop(const CONTEXT *ctxt, THREADID thread_id) {
+  localStore[thread_id].dynins->setMarker(true);
+  localStore[thread_id].dynins->setMarkerEndLoop();
+  ////cerr <<"end \n";
 }
 
 
@@ -387,7 +400,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
      
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RDI) {
-       //cerr << "RDI \n";
+       cerr << "RDI \n";
        INSTRUMENT_PREDICATED(
          INSTR_IF_DETAILED(inst_mode),
          trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRDI, 
@@ -397,7 +410,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
 
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RCX) {
-       //cerr << "RCX \n";
+       cerr << "RCX \n";
        INSTRUMENT_PREDICATED(
          INSTR_IF_DETAILED(inst_mode),
          trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRCX, 
@@ -408,7 +421,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 
      
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RBX) {
-       //cerr << "RBX \n";
+       cerr << "RBX \n";
        INSTRUMENT_PREDICATED(
          INSTR_IF_DETAILED(inst_mode),
          trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRBX, 
@@ -418,7 +431,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
      
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R8){
-       //cerr << "R8 \n";
+       cerr << "R8 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep0, 
@@ -428,7 +441,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
 
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R9){
-       //cerr << "R9 \n";
+       cerr << "R9 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep1, 
@@ -437,7 +450,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R10){
-       //cerr << "R10 \n";
+       cerr << "R10 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep2, 
@@ -446,7 +459,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R11){
-       //cerr << "R11 \n";
+       cerr << "R11 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep3, 
@@ -455,7 +468,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R12){
-       //cerr << "R12 \n";
+       cerr << "R12 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep4, 
@@ -464,7 +477,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R13){
-       //cerr << "R13 \n";
+       cerr << "R13 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep5, 
@@ -474,7 +487,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
 
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R14){
-       //cerr << "R14 \n";
+       cerr << "R14 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep6, 
@@ -483,10 +496,28 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R15){
-       //cerr << "R15 \n";
+       cerr << "R15 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep7, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RSI){
+       cerr << "RSI \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgBeginLoop, 
+			     IARG_CONST_CONTEXT, 
+			     IARG_THREAD_ID, 
+			     IARG_END);
+     }
+     if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RDX){
+       cerr << "RDX \n";
+       INSTRUMENT_PREDICATED(
+			     INSTR_IF_DETAILED(inst_mode),
+			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgEndLoop, 
 			     IARG_CONST_CONTEXT, 
 			     IARG_THREAD_ID, 
 			     IARG_END);
