@@ -1,0 +1,8 @@
+;; This buffer is for text that is not saved, and for Lisp evaluation.
+;; To create a file, visit it with C-x C-f and enter text in its buffer.
+
+(use-package company
+	     :ensure t
+	     :config
+	     (setq company-idle-delay 0)
+	     (setq company-minimum-refix-length 3))
