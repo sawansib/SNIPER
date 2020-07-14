@@ -400,7 +400,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
      
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RDI) {
-       cerr << "RDI \n";
+       //cerr << "RDI \n";
        INSTRUMENT_PREDICATED(
          INSTR_IF_DETAILED(inst_mode),
          trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRDI, 
@@ -410,7 +410,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
 
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RCX) {
-       cerr << "RCX \n";
+       //cerr << "RCX \n";
        INSTRUMENT_PREDICATED(
          INSTR_IF_DETAILED(inst_mode),
          trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRCX, 
@@ -421,7 +421,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 
      
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RBX) {
-       cerr << "RBX \n";
+       //cerr << "RBX \n";
        INSTRUMENT_PREDICATED(
          INSTR_IF_DETAILED(inst_mode),
          trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgRBX, 
@@ -431,7 +431,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
      
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R8){
-       cerr << "R8 \n";
+       //cerr << "R8 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep0, 
@@ -441,7 +441,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
 
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R9){
-       cerr << "R9 \n";
+       //cerr << "R9 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep1, 
@@ -450,7 +450,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R10){
-       cerr << "R10 \n";
+       //cerr << "R10 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep2, 
@@ -459,7 +459,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R11){
-       cerr << "R11 \n";
+       //cerr << "R11 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep3, 
@@ -468,7 +468,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R12){
-       cerr << "R12 \n";
+       //cerr << "R12 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep4, 
@@ -477,7 +477,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R13){
-       cerr << "R13 \n";
+       //cerr << "R13 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep5, 
@@ -487,7 +487,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
      }
 
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R14){
-       cerr << "R14 \n";
+       //cerr << "R14 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep6, 
@@ -496,7 +496,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_R15){
-       cerr << "R15 \n";
+       //cerr << "R15 \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgDep7, 
@@ -505,7 +505,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RSI){
-       cerr << "RSI \n";
+       //cerr << "RSI \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgBeginLoop, 
@@ -514,7 +514,7 @@ VOID InstructionModeling::addInstructionModeling(TRACE trace, INS ins, InstMode:
 			     IARG_END);
      }
      if (INS_OperandReg(ins, 0) == INS_OperandReg(ins, 1) && INS_OperandReg(ins, 0) == REG_RDX){
-       cerr << "RDX \n";
+       //cerr << "RDX \n";
        INSTRUMENT_PREDICATED(
 			     INSTR_IF_DETAILED(inst_mode),
 			     trace, ins, IPOINT_BEFORE, (AFUNPTR)handleXchgEndLoop, 

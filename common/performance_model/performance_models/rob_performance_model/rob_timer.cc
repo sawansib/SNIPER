@@ -470,8 +470,8 @@ std::string RobTimer::getPCDiffAndUpdateLast_Marker()
   DynamicMicroOp &dmo = *entry->uop;
   auto new_pc = dmo.getMicroOp()->getInstruction()->getAddress();
   long long diff = getPCDiff(new_pc, deptrace_last_pc);
-  assert(marker_executed > 0);
-  assert(marker_size > 0);
+  //assert(marker_executed > 0);
+  //assert(marker_size > 0);
   diff = diff+newpcdiff;
   deptrace_last_pc = new_pc;
   return std::to_string(diff);
@@ -828,9 +828,9 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  }
 	  else {
 	    if (dmo.getMicroOp()->getInstruction()->isAtomic()) 
-	      deptrace_f << "LA" << getPCDiffAndUpdateLast(); // Load uop (part of an atomic instruction)
+	      deptrace_f << "LA" << getPCDiffAndUpdateLast_Marker(); // Load uop (part of an atomic instruction)
 	    else
-	      deptrace_f << "L" << getPCDiffAndUpdateLast();
+	      deptrace_f << "L" << getPCDiffAndUpdateLast_Marker();
 	    
 #if DEBUG_DEPTRACE >= 1
 	    deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
@@ -869,9 +869,9 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    else
 	      deptrace_f << " ";
 	    if (dmo.getMicroOp()->getInstruction()->isAtomic()) 
-	      deptrace_f << "SA" << getPCDiffAndUpdateLast(); // Store uop (part of an atomic instruction)
+	      deptrace_f << "SA" << getPCDiffAndUpdateLast_Marker(); // Store uop (part of an atomic instruction)
 	    else
-	      deptrace_f << "S" << getPCDiffAndUpdateLast();
+	      deptrace_f << "S" << getPCDiffAndUpdateLast_Marker();
 	    
 #if DEBUG_DEPTRACE >= 1
 	    deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
@@ -898,7 +898,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    deptrace_f << " " << deptrace_store_size << "\n";
 	    deptrace_store_addr = 0x0;
 	    deptrace_last_was_newline = true;
-	    
+	    newpcdiff = 0;
 	  }
 	
 	if (deptrace_is_branch)
@@ -908,7 +908,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    else
 	      deptrace_f << " ";
 	    assert(!(dmo.getMicroOp()->getInstruction()->isAtomic()));
-	    deptrace_f << "B" << getPCDiffAndUpdateLast();
+	    deptrace_f << "B" << getPCDiffAndUpdateLast_Marker();
 	    
 #if DEBUG_DEPTRACE >= 1
 	    deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
@@ -931,6 +931,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    deptrace_f << "t" << getPCDiff(dmo.getBranchTarget(), deptrace_last_pc);
 	    if (dmo.isBranchTaken()) 
 	      deptrace_f << "*";
+	    newpcdiff = 0;
 	  }
 	
 	// For non-branch, non load, non-store instructions
@@ -953,9 +954,9 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    deptrace_last_was_newline = true;
 	    total_marker_executed++;
 	    marker_executed++;
-	    newpcdiff += savePCdiff();
+	     newpcdiff += savePCdiff();
 	    if (dmo.mGetMarkerBegin()){
-	      deptrace_f << "XCHG_RDI"<<" "<<getPCDiffAndUpdateLast(); 
+	      // deptrace_f << "XCHG_RDI"<<" "<<getPCDiffAndUpdateLast(); 
 	      for(int i = 0; i<64; i++) xchg_dep_rdep[i]=0;
 	      xchg_dep_executed = 0;
 	      last_was_marker = true;
@@ -967,7 +968,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    if ((dmo.mGetMarkerEnd() && look_for_value) ||
 		(dmo.mGetMarkerEnd() && look_for_loop_id_begin) ||
 		(dmo.mGetMarkerEnd() && look_for_loop_id_end)){
-	       deptrace_f << "XCHG_RCX"<<" "<<getPCDiffAndUpdateLast();
+	      //deptrace_f << "XCHG_RCX"<<" "<<getPCDiffAndUpdateLast();
 	      if (look_for_value){
 		if(last_was_may)
 		  final_DepValue_may = this->FinalMarkerValue();
@@ -996,7 +997,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 
 	    if (dmo.mGetIsNotKnown() && look_for_value){
 	      xchg_dep_executed++;
-	      deptrace_f << "XCHG_RBX"<<" "<<getPCDiffAndUpdateLast(); 
+	      // deptrace_f << "XCHG_RBX"<<" "<<getPCDiffAndUpdateLast(); 
 	      if(last_was_may)
 		is_not_known_may = true;
 	      else
@@ -1006,7 +1007,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    if ((dmo.mGetMarkerDep() && look_for_value)
 		|| (dmo.mGetMarkerDep() && look_for_loop_id_begin)
 		|| (dmo.mGetMarkerDep() && look_for_loop_id_end)){
-	      deptrace_f << "XCHG_R" <<dmo.mGetMarkerValue()<<" "<<getPCDiffAndUpdateLast(); 
+	      // deptrace_f << "XCHG_R" <<dmo.mGetMarkerValue()<<" "<<getPCDiffAndUpdateLast(); 
 	      marker_dep_size = dmo.getMicroOp()->getInstruction()->getAddress();
 	      marker_size =  marker_dep_size - marker_begin_size;
 	      assert(marker_size > 0);
@@ -1018,13 +1019,13 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    if (dmo.mGetMarkerBeginLoop()){
 	       xchg_dep_executed = 0;
 	      look_for_loop_id_begin = true;
-	       deptrace_f << "XCHG_RSI"<<" "<<getPCDiffAndUpdateLast();
+	      //deptrace_f << "XCHG_RSI"<<" "<<getPCDiffAndUpdateLast();
 	      //std::cout<<"BEGIN_LOOP\n";
 	    }
 	    if (dmo.mGetMarkerEndLoop()){
 	       xchg_dep_executed = 0;
 	      look_for_loop_id_end = true;
-	      deptrace_f << "XCHG_RDX"<<" "<<getPCDiffAndUpdateLast();
+	      //deptrace_f << "XCHG_RDX"<<" "<<getPCDiffAndUpdateLast();
 	      //std::cout<<"END_LOOP\n";
 	    }
 	  }
@@ -1038,8 +1039,10 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	  } else if (dmo.getMicroOp()->getSubtype() == MicroOp::UOP_SUBTYPE_FP_SQRT) { 
 	    deptrace_f << "Q";
 	  } // else deptrace_f << "i";
-	  if(!dmo.mGetMarker())deptrace_f << getPCDiffAndUpdateLast();
-               
+	  if(!dmo.mGetMarker()){
+	    deptrace_f << getPCDiffAndUpdateLast_Marker();
+	    newpcdiff = 0;
+	  }   
 #if DEBUG_DEPTRACE >= 1
 	  deptrace_f << "(" << std::hex << dmo.getMicroOp()->getInstruction()->getAddress() << std::dec << ")";
 #endif

@@ -103,6 +103,7 @@ private:
    uint64_t getXCHGadep(uint64_t adep, uint64_t num_seq);
 
    uint64_t loop_id = 0;
+   bool last_was_loop_marker = false;
    bool look_for_loop_id_begin = false;
    bool look_for_loop_id_end = false;
    bool look_for_value = false;
