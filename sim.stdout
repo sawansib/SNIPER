@@ -1,0 +1,11 @@
+
+insert-clear-stats-by-icount: 0
+[SNIPER] Start
+[DEPTRACE] Enabling trace generation with ROI
+[SNIPER] --------------------------------------------------------------------------------
+[SNIPER] Sniper using Pin frontend
+[SNIPER] Running full application in DETAILED mode
+[SNIPER] --------------------------------------------------------------------------------
+[SNIPER] Enabling performance models
+[DEPTRACE] ROI: Enabling trace generation
+[SNIPER] Setting instrumentation mode to DETAILED

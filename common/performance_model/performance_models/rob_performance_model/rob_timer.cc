@@ -956,7 +956,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    marker_executed++;
 	     newpcdiff += savePCdiff();
 	    if (dmo.mGetMarkerBegin()){
-	      // deptrace_f << "XCHG_RDI"<<" "<<getPCDiffAndUpdateLast(); 
+	      //deptrace_f << "XCHG_RDI "; 
 	      for(int i = 0; i<64; i++) xchg_dep_rdep[i]=0;
 	      xchg_dep_executed = 0;
 	      last_was_marker = true;
@@ -968,13 +968,13 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    if ((dmo.mGetMarkerEnd() && look_for_value) ||
 		(dmo.mGetMarkerEnd() && look_for_loop_id_begin) ||
 		(dmo.mGetMarkerEnd() && look_for_loop_id_end)){
-	      //deptrace_f << "XCHG_RCX"<<" "<<getPCDiffAndUpdateLast();
+	      //deptrace_f << "XCHG_RCX " << "MAR " <<last_was_may;
 	      if (look_for_value){
 		if(last_was_may)
 		  final_DepValue_may = this->FinalMarkerValue();
 		else 
 		  final_DepValue_must = this->FinalMarkerValue();
-		
+		//deptrace_f << "MAY " <<final_DepValue_may<<" MUST"<<final_DepValue_must<<" ";
 		if(last_was_may)
 		  last_was_may = false;
 		else
@@ -997,7 +997,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 
 	    if (dmo.mGetIsNotKnown() && look_for_value){
 	      xchg_dep_executed++;
-	      // deptrace_f << "XCHG_RBX"<<" "<<getPCDiffAndUpdateLast(); 
+	      //deptrace_f << "XCHG_RBX "; 
 	      if(last_was_may)
 		is_not_known_may = true;
 	      else
@@ -1007,7 +1007,7 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    if ((dmo.mGetMarkerDep() && look_for_value)
 		|| (dmo.mGetMarkerDep() && look_for_loop_id_begin)
 		|| (dmo.mGetMarkerDep() && look_for_loop_id_end)){
-	      // deptrace_f << "XCHG_R" <<dmo.mGetMarkerValue()<<" "<<getPCDiffAndUpdateLast(); 
+	      //deptrace_f << "XCHG_R " <<dmo.mGetMarkerValue()<<" "; 
 	      marker_dep_size = dmo.getMicroOp()->getInstruction()->getAddress();
 	      marker_size =  marker_dep_size - marker_begin_size;
 	      assert(marker_size > 0);
@@ -1019,13 +1019,13 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 	    if (dmo.mGetMarkerBeginLoop()){
 	       xchg_dep_executed = 0;
 	      look_for_loop_id_begin = true;
-	      //deptrace_f << "XCHG_RSI"<<" "<<getPCDiffAndUpdateLast();
+	      //deptrace_f << "XCHG_RSI"<<" ";
 	      //std::cout<<"BEGIN_LOOP\n";
 	    }
 	    if (dmo.mGetMarkerEndLoop()){
 	       xchg_dep_executed = 0;
 	      look_for_loop_id_end = true;
-	      //deptrace_f << "XCHG_RDX"<<" "<<getPCDiffAndUpdateLast();
+	      //deptrace_f << "XCHG_RDX"<<" ";
 	      //std::cout<<"END_LOOP\n";
 	    }
 	  }
